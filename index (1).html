@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>pixel♥beat · 音樂視覺化</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=Silkscreen&family=DotGothic16&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#000000;--card:#0a0a0a;--ink:#f2f2f2;--muted:#9a9a9a;--line:#2a2a2a;--pink:#ffffff;--hot:#ffffff;--violet:#b5b5b5;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000000}}
+:root[data-theme="dark"]{--bg:#000000}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{min-height:100%;background:var(--bg);color:var(--ink);font:15px/1.55 "DotGothic16",-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:370px minmax(0,1fr);gap:28px;max-width:1220px;margin:0 auto;padding:18px}
+@media(max-width:820px){.app{grid-template-columns:1fr;padding:12px}.side{order:2}}
+.stage{display:flex;justify-content:center;align-items:flex-start}
+canvas#view{display:block;width:min(100%,calc((100vh - 36px)*9/16));height:auto;image-rendering:pixelated;border:1px solid var(--line);box-shadow:0 0 60px rgba(255,255,255,.08)}
+@media(max-width:820px){canvas#view{width:100%}}
+.brand{font-family:"Pixelify Sans",monospace;font-weight:700;font-size:28px;letter-spacing:.02em;margin:2px;color:var(--ink)}
+.brand span{color:var(--pink)}
+.brand small{display:block;font:14px/1.4 "DotGothic16",-apple-system,"PingFang TC",sans-serif;color:var(--muted);margin-top:2px}
+.side{display:flex;flex-direction:column;gap:12px}
+section{background:var(--card);border:1px solid var(--line);padding:12px 14px 14px}
+section>h2{margin:0 0 10px;font-size:14px;font-weight:400;color:var(--pink);letter-spacing:.04em}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--line)}
+.tabs button{justify-content:center;padding:10px 4px;background:transparent;border:0;box-shadow:none;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--pink);color:#000000}
+.pane[hidden]{display:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,.filebtn{font:inherit;font-size:14px;border:1px solid var(--line);background:#141414;color:var(--ink);border-radius:0;padding:7px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;position:relative}
+button:hover,.filebtn:hover{border-color:var(--violet)}
+button.primary,.filebtn.primary{background:var(--pink);border-color:var(--pink);color:#000000}
+button:focus-visible,.filebtn:focus-within,input:focus-visible,select:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+button:disabled{opacity:.4;cursor:default}
+.filebtn input{position:absolute;opacity:0;width:1px;height:1px}
+label.f{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center;font-size:14px;margin-top:9px;color:var(--muted)}
+select,input[type=number],input[type=text]{font:inherit;font-size:14px;background:#141414;color:var(--ink);border:1px solid var(--line);border-radius:0;padding:5px 8px;width:100%}
+input[type=range]{width:100%;accent-color:var(--pink)}
+input[type=checkbox]{accent-color:var(--pink)}
+.hint{font-size:13px;color:var(--muted);margin:10px 0 0}
+.status{font-size:13px;color:var(--pink);min-height:1.5em;margin-top:8px}
+.tracks{display:flex;flex-direction:column;gap:6px}
+.trk{display:flex;align-items:center;gap:8px;font-size:14px}
+.sw{width:10px;height:10px;flex:none}
+.trk span.n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kb{position:relative;height:92px;margin-top:12px;user-select:none;-webkit-user-select:none;touch-action:none;border:1px solid var(--line)}
+.kb .w,.kb .b{position:absolute;top:0}
+.kb .w{height:90px;background:#ececec;border-right:1px solid #050409}
+.kb .b{height:54px;background:#050409;z-index:2}
+.kb .on{background:var(--press,#8a8a8a)!important;box-shadow:inset 0 -6px 0 rgba(0,0,0,.35)}
+.seek{margin-top:12px}
+.err{font-size:13px;color:#ff7a7a;margin:6px 0 0 102px}
+.err:empty{display:none}
+.kb.locked{opacity:.35}
+.ed{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px)}
+.ed[hidden]{display:none}
+.edbox{background:var(--card);border:1px solid var(--line);padding:14px;max-width:760px;width:100%;max-height:100%;overflow:auto}
+.edbox h2{font-size:15px;margin:0 0 10px;font-weight:400;color:var(--pink)}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--line)}
+.seg button{border:0}
+.seg button[aria-pressed="true"],.seg2 button[aria-pressed="true"]{background:var(--pink);color:#000000}
+#edCanvas{display:block;max-width:100%;max-height:58vh;width:auto;height:auto;margin:14px auto;touch-action:none;border:1px solid var(--line);background:#050505}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="side">
+    <div class="brand">pixel<span>♥</span>beat<small>把圖片輪廓或即時彈奏變成音樂影片</small></div>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="t-image" aria-selected="true" data-tab="image">圖片轉 MIDI</button>
+      <button role="tab" id="t-live" aria-selected="false" data-tab="live">即時彈奏</button>
+    </div>
+
+    <section class="pane" id="p-image" role="tabpanel" aria-labelledby="t-image">
+      <h2>圖片輪廓轉 MIDI</h2>
+      <div class="row">
+        <label class="filebtn primary">上傳圖片<input type="file" id="imgFile" accept="image/*"></label>
+        <button id="editImgBtn" disabled>重新裁切／選主體</button>
+      </div>
+      <p class="hint">上傳後會先開編輯畫面：① 裁切 ② 框出主體 ③ 用筆刷補上漏掉、擦掉多抓的地方。「完整主體」會把整個主體用原圖顏色畫成音符。</p>
+      <label class="f">轉換方式<select id="imgMode"><option value="full" selected>完整主體（用原圖顏色）</option><option value="subject">只要外框</option><option value="edges">圖中所有線條</option></select></label>
+      <label class="f">像素格數<select id="imgPix"><option value="32">32 格寬（最簡單）</option><option value="48">48 格寬</option><option value="64" selected>64 格寬</option><option value="80">80 格寬</option><option value="96">96 格寬</option><option value="128">128 格寬（最細）</option></select></label>
+      <label class="f">長度<select id="imgBars"><option value="4">4 小節</option><option value="8" selected>8 小節</option><option value="16">16 小節</option></select></label>
+      <label class="f">音域<select id="imgOct"><option value="3">3 個八度</option><option value="4" selected>4 個八度</option><option value="5">5 個八度</option></select></label>
+      <label class="f">音階<select id="imgScale">
+        <option value="chrom">半音（輪廓最清楚）</option>
+        <option value="major">大調</option>
+        <option value="minor">自然小調</option>
+        <option value="majPent" selected>大調五聲音階（最好聽）</option>
+        <option value="minPent">小調五聲音階</option>
+      </select></label>
+      <label class="f">速度 BPM<input type="number" id="imgBpm" value="100" min="40" max="240"></label>
+    </section>
+
+    <section class="pane" id="p-live" role="tabpanel" aria-labelledby="t-live" hidden>
+      <h2>即時彈奏</h2>
+      <label class="f">長度（小節）<input type="number" id="liveBars" value="8" min="1" max="64" step="1"></label>
+      <label class="f">速度 BPM<input type="number" id="liveBpm" value="100" min="40" max="240" step="1"></label>
+      <div class="row" style="margin-top:12px"><button class="primary" id="liveSetBtn">設定完成</button></div>
+      <div class="row" style="margin-top:12px">
+        <button id="liveRecBtn" disabled>● 錄音</button>
+        <label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="metroChk" checked> 節拍器</label>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button id="midiConnectBtn">連接 MIDI 鍵盤</button>
+        <button id="clearBtn">清空</button>
+      </div>
+      <div class="kb locked" id="kb" aria-label="螢幕鍵盤"></div>
+      <p class="hint">先設好長度和速度，按「設定完成」才能開始彈。按「錄音」會先響一小節預備拍，再從第 1 小節開始錄，錄到設定的長度會自動停；重錄會蓋掉上一次。節拍器只有你聽得到，輸出的影片裡不會有它的聲音。</p>
+      <p class="hint">電腦鍵盤 A W S E D F T G Y H U J K 也能彈，Z / X 換八度。</p>
+    </section>
+
+    <section id="coverSec" hidden>
+      <h2>封面圖片</h2>
+      <div class="row">
+        <label class="filebtn primary">上傳封面<input type="file" id="coverFile" accept="image/*"></label>
+        <button id="coverClear" disabled>移除</button>
+      </div>
+      <p class="hint">封面會放在畫面左上角，這一頁的配色（音符、頻譜、光暈、背景）會跟著這張圖變。兩頁的封面和配色各自獨立。</p>
+    </section>
+
+    <section>
+      <h2>播放</h2>
+      <div class="row">
+        <button class="primary" id="playBtn">播放</button>
+        <button id="restartBtn">從頭開始</button>
+      </div>
+      <input class="seek" type="range" id="seek" min="0" max="1000" value="0" aria-label="播放位置">
+    </section>
+
+    <section>
+      <h2>音軌</h2>
+      <div class="tracks" id="tracks"></div>
+    </section>
+
+    <section>
+      <h2>輸出影片</h2>
+      <label class="f">畫面標題<input type="text" id="titleIn" value="untitled" maxlength="22"></label>
+      <div class="row" style="margin-top:12px"><button class="primary" id="recBtn">錄製整首成影片</button></div>
+      <p class="hint">從頭播到尾邊播邊錄，存成 1080×1920 含聲音的影片。</p>
+      <div class="status" id="status" role="status"></div>
+    </section>
+  </div>
+  <div class="stage"><canvas id="view" width="1080" height="1920" aria-label="音樂視覺化畫面"></canvas></div>
+</div>
+
+<div class="ed" id="ed" hidden role="dialog" aria-modal="true" aria-labelledby="edTitle">
+  <div class="edbox">
+    <h2 id="edTitle">調整圖片、框出主體</h2>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg"><button id="edModeCrop" aria-pressed="true">1 · 調整</button><button id="edModeSubj" aria-pressed="false">2 · 框主體</button><button id="edModeFix" aria-pressed="false">3 · 修邊</button></div>
+      <div class="row"><button id="edRotate">旋轉 90°</button><button id="edReset">重設</button></div>
+    </div>
+    <div class="row" id="edZoomRow" style="margin-top:12px"><label class="row" style="gap:8px;font-size:14px;flex:1">放大<input type="range" id="edZoom" min="100" max="600" value="100" style="flex:1" aria-label="放大"></label></div>
+    <div class="row seg2" id="edBrushRow" hidden style="margin-top:12px">
+      <button id="edAdd" aria-pressed="true">＋ 加入</button><button id="edErase" aria-pressed="false">－ 擦掉</button>
+      <label class="row" style="gap:6px;font-size:14px;flex:1;min-width:140px">筆刷<input type="range" id="edBrushSize" min="2" max="14" value="5" style="flex:1"></label>
+      <button id="edClearSeeds">清除塗抹</button><button id="edClearBox">取消主體框</button>
+    </div>
+    <canvas id="edCanvas" width="10" height="10"></canvas>
+    <p class="hint" id="edHint" style="margin-top:0"></p>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button id="edCancel">取消</button>
+      <button class="primary" id="edOk">轉成 MIDI</button>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+const W = 1080, H = 1920;
+const cv = document.getElementById("view");
+const G = cv.getContext("2d");
+const LW = 270, LH = 480;
+const lc = document.createElement("canvas"); lc.width = LW; lc.height = LH;
+const g = lc.getContext("2d");
+const $ = id => document.getElementById(id);
+const statusEl = $("status");
+const say = s => { statusEl.textContent = s; };
+
+const PALETTE = ["#ffffff", "#bdbdbd", "#e6e6e6", "#8c8c8c", "#d4d4d4", "#a6a6a6", "#f2f2f2", "#7a7a7a"];
+const DEFAULT_PAL0 = PALETTE.slice();
+const C = { lav:"#d6d6d6", lav2:"#101010", shadow:"#2a2a2a", ink:"#000000", navy:"#050505", navy2:"#050505", grid:"#1d1d1d", pink:"#ffffff", hot:"#ffffff", blush:"#cfcfcf", cream:"#ffffff", indigo:"#7d7d7d", violet:"#b5b5b5", orange:"#ffffff", line:"#2a2a2a", dim:"#575757", bg0:"#000000" };
+const DEFAULT_C = { ...C }, DEFAULT_PAL = [];
+let tab = "image";
+const songs = { image: null, live: null };
+const DISPLAY = '"Pixelify Sans", "Silkscreen", monospace';
+const PIX = 'Silkscreen, "Pixelify Sans", monospace';
+const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
+const nname = p => NOTE_NAMES[p % 12] + (Math.floor(p / 12) - 1);
+
+let song = null;
+let D = {};
+function setSong(s) { song = s; prepare(); seekTo(0); renderTracks(); ripples.length = 0; }
+function prepare() {
+  const n = song.notes;
+  n.sort((a, b) => a.t - b.t || a.p - b.p);
+  let lo = 127, hi = 0, dur = 0, maxD = 0.1;
+  for (const x of n) { lo = Math.min(lo, x.p); hi = Math.max(hi, x.p); dur = Math.max(dur, x.t + x.d); maxD = Math.max(maxD, Math.min(x.d, 16)); }
+  if (song.range) { lo = song.range[0]; hi = song.range[1]; }
+  else {
+    if (!n.length) { lo = 48; hi = 84; }
+    lo = Math.max(0, lo - 2); hi = Math.min(127, Math.max(hi + 2, lo + 24));
+  }
+  // the song always ends exactly on a bar line: the set length if there is one, otherwise the last note rounded to a whole bar
+  // (a note that only spills a hair past the bar line no longer adds a whole extra bar)
+  const barLen = 60 / song.bpm * song.beats;
+  song.duration = song.length ? song.length : dur > 0 ? Math.max(1, Math.ceil(dur / barLen - 0.1)) * barLen : 0;
+  const BINS = 480, env = new Float32Array(BINS);
+  if (dur > 0) {
+    for (const x of n) {
+      const a = Math.floor(x.t / dur * (BINS - 1)), b = Math.floor(Math.min(x.t + Math.min(x.d, 1.2), dur) / dur * (BINS - 1));
+      for (let k = a; k <= b; k++) env[k] += x.v;
+    }
+    let m = 0; for (const v of env) m = Math.max(m, v);
+    if (m > 0) for (let k = 0; k < BINS; k++) env[k] /= m;
+  }
+  D = { lo, hi, maxD, env, spb: 60 / song.bpm * song.beats, step: 60 / song.bpm / 4 };
+  const score = new Float64Array(n.length + 1), combo = new Int32Array(n.length);
+  for (let i = 0; i < n.length; i++) { score[i + 1] = score[i] + Math.round(n[i].v * 977); combo[i] = i > 0 && n[i].t - n[i - 1].t < 1.5 ? combo[i - 1] + 1 : 1; }
+  D.score = score; D.combo = combo;
+  if (typeof playing !== "undefined" && playing) schedIdx = lowerBound(scheduledUntil);
+}
+function lowerBound(t) {
+  const n = song.notes; let a = 0, b = n.length;
+  while (a < b) { const m = (a + b) >> 1; if (n[m].t < t) a = m + 1; else b = m; }
+  return a;
+}
+function notesIn(t0, t1) {
+  const n = song.notes, out = [];
+  for (let i = lowerBound(t0 - D.maxD); i < n.length && n[i].t < t1; i++) if (n[i].t + n[i].d > t0) out.push(n[i]);
+  return out;
+}
+const trackColor = tr => song.fromImage ? ((song.tracks[tr] && song.tracks[tr].color) || PALETTE[tr % PALETTE.length]) : PALETTE[tr % PALETTE.length];
+
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+/* ---------------- image contour → MIDI ---------------- */
+const SCALES = { majPent:[0,2,4,7,9], minPent:[0,3,5,7,10], major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], chrom:[0,1,2,3,4,5,6,7,8,9,10,11] };
+let srcImg = null, contour = null; // contour: {canvas, aw, ah}
+
+function boxBlur(a, w, h, r) {
+  if (r < 1) return a;
+  const tmp = new Float32Array(a.length), out = new Float32Array(a.length);
+  for (let y = 0; y < h; y++) { let s = 0, c = 0; for (let x = -r; x < w + r; x++) { if (x + r < w) { s += a[y * w + x + r]; c++; } if (x - r - 1 >= 0) { s -= a[y * w + x - r - 1]; c--; } if (x >= 0 && x < w) tmp[y * w + x] = s / c; } }
+  for (let x = 0; x < w; x++) { let s = 0, c = 0; for (let y = -r; y < h + r; y++) { if (y + r < h) { s += tmp[(y + r) * w + x]; c++; } if (y - r - 1 >= 0) { s -= tmp[(y - r - 1) * w + x]; c--; } if (y >= 0 && y < h) out[y * w + x] = s / c; } }
+  return out;
+}
+function otsu(a) {
+  const hist = new Float64Array(256); for (const v of a) hist[Math.max(0, Math.min(255, Math.round(v * 255)))]++;
+  const total = a.length; let sum = 0; for (let i = 0; i < 256; i++) sum += i * hist[i];
+  let sB = 0, wB = 0, best = 0, thr = 128;
+  for (let i = 0; i < 256; i++) { wB += hist[i]; if (!wB) continue; const wF = total - wB; if (!wF) break; sB += i * hist[i]; const mB = sB / wB, mF = (sum - sB) / wF, v = wB * wF * (mB - mF) ** 2; if (v > best) { best = v; thr = i; } }
+  return thr / 255;
+}
+function findContour(img, mode, detail, invert, box, seeds) {
+  let outMask = null;
+  const aw = IMG_IN.w, ah = Math.max(40, Math.min(360, Math.round(img.height / img.width * aw)));
+  const oc = document.createElement("canvas"); oc.width = aw; oc.height = ah;
+  const ox = oc.getContext("2d", { willReadFrequently: true }); ox.drawImage(img, 0, 0, aw, ah);
+  const px = ox.getImageData(0, 0, aw, ah).data, N = aw * ah;
+  const edge = new Uint8Array(N);
+  if (seeds && seeds.data) { const sd = seeds; seeds = new Uint8Array(N); for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) seeds[y * aw + x] = sd.data[Math.min(sd.h - 1, Math.floor(y / ah * sd.h)) * sd.w + Math.min(sd.w - 1, Math.floor(x / aw * sd.w))]; }
+  if (mode === "subject") {
+    const bx0 = box ? Math.floor(box.x * aw) : 0, by0 = box ? Math.floor(box.y * ah) : 0, bx1 = box ? Math.ceil((box.x + box.w) * aw) : aw, by1 = box ? Math.ceil((box.y + box.h) * ah) : ah;
+    const inBox = i => { const x = i % aw, y = (i / aw) | 0; return x >= bx0 && x < bx1 && y >= by0 && y < by1; };
+    // perceptual colour (Lab) so a cream subject separates from a grey background
+    let L = new Float32Array(N), A = new Float32Array(N), B = new Float32Array(N);
+    const lin = c => (c /= 255) <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4), f = v => v > 0.008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116;
+    for (let i = 0; i < N; i++) {
+      const r = lin(px[i * 4]), gg = lin(px[i * 4 + 1]), bl = lin(px[i * 4 + 2]);
+      const fx = f((0.4124 * r + 0.3576 * gg + 0.1805 * bl) / 0.95047), fy = f(0.2126 * r + 0.7152 * gg + 0.0722 * bl), fz = f((0.0193 * r + 0.1192 * gg + 0.9505 * bl) / 1.08883);
+      L[i] = 116 * fy - 16; A[i] = 500 * (fx - fy); B[i] = 200 * (fy - fz);
+    }
+    L = boxBlur(L, aw, ah, 1); A = boxBlur(A, aw, ah, 1); B = boxBlur(B, aw, ah, 1);
+    const dist = (i, c) => 0.45 * (L[i] - c[0]) ** 2 + (A[i] - c[1]) ** 2 + (B[i] - c[2]) ** 2;
+    const kmeans = (idx, k) => {
+      if (!idx.length) return [];
+      const step = Math.max(1, Math.floor(idx.length / 2500)), smp = []; for (let j = 0; j < idx.length; j += step) smp.push(idx[j]);
+      const cs = [[L[smp[0]], A[smp[0]], B[smp[0]]]];
+      while (cs.length < Math.min(k, smp.length)) { let bi = smp[0], bd = -1; for (const i of smp) { let d = Infinity; for (const c of cs) d = Math.min(d, dist(i, c)); if (d > bd) { bd = d; bi = i; } } cs.push([L[bi], A[bi], B[bi]]); }
+      for (let it = 0; it < 6; it++) {
+        const acc = cs.map(() => [0, 0, 0, 0]);
+        for (const i of smp) { let bj = 0, bd = Infinity; cs.forEach((c, j) => { const d = dist(i, c); if (d < bd) { bd = d; bj = j; } }); const a2 = acc[bj]; a2[0] += L[i]; a2[1] += A[i]; a2[2] += B[i]; a2[3]++; }
+        acc.forEach((a2, j) => { if (a2[3]) cs[j] = [a2[0] / a2[3], a2[1] / a2[3], a2[2] / a2[3], a2[3]]; });
+      }
+      // drop tiny clusters: a sliver of subject outside the box shouldn't teach "this colour is background"
+      const tot = cs.reduce((s2, c) => s2 + (c[3] || 0), 0);
+      const keep = cs.filter(c => (c[3] || 0) / tot >= 0.06);
+      return keep.length ? keep : cs;
+    };
+    // first guess: inside the box (or the middle of the picture) is subject, the rest is background
+    let mask = new Uint8Array(N);
+    for (let i = 0; i < N; i++) {
+      const x = i % aw, y = (i / aw) | 0;
+      mask[i] = box ? (inBox(i) ? 1 : 0) : (((x / aw - 0.5) / 0.36) ** 2 + ((y / ah - 0.5) / 0.4) ** 2 < 1 ? 1 : 0);
+      if (seeds) { if (seeds[i] === 1) mask[i] = 1; else if (seeds[i] === 2) mask[i] = 0; }
+    }
+    const border = [];
+    for (let i = 0; i < N; i++) { const x = i % aw, y = (i / aw) | 0; if (x < 4 || y < 4 || x >= aw - 4 || y >= ah - 4) border.push(i); }
+    for (let it = 0; it < 4; it++) {
+      const fgI = [], bgI = [];
+      for (let i = 0; i < N; i++) {
+        if (seeds && seeds[i] === 1) { fgI.push(i); continue; } if (seeds && seeds[i] === 2) { bgI.push(i); continue; }
+        if (mask[i]) { if (it > 0 || !box || inBox(i)) fgI.push(i); } else bgI.push(i);
+      }
+      if (!box && it === 0) bgI.push(...border);
+      const fc = kmeans(fgI, 6), bc = kmeans(bgI, 6);
+      if (!fc.length || !bc.length) break;
+      let sc = new Float32Array(N);
+      for (let i = 0; i < N; i++) { let df = Infinity, db = Infinity; for (const c of fc) df = Math.min(df, dist(i, c)); for (const c of bc) db = Math.min(db, dist(i, c)); sc[i] = Math.sqrt(db) - Math.sqrt(df); }
+      sc = boxBlur(sc, aw, ah, 1 + Math.round((1 - detail) * 3));
+      for (let i = 0; i < N; i++) {
+        mask[i] = (sc[i] > 0) !== invert && (!box || inBox(i)) ? 1 : 0;
+        if (seeds) { if (seeds[i] === 1) mask[i] = 1; else if (seeds[i] === 2) mask[i] = 0; }
+      }
+    }
+    // keep the big connected pieces (the subject), drop specks
+    const lab = new Int32Array(N).fill(-1), sizes = [], q = new Int32Array(N);
+    for (let i = 0; i < N; i++) {
+      if (!mask[i] || lab[i] >= 0) continue;
+      const id = sizes.length; let qh = 0, qt = 0; q[qt++] = i; lab[i] = id; let cnt = 0;
+      while (qh < qt) { const j = q[qh++]; cnt++; const x = j % aw, y = (j / aw) | 0;
+        if (x > 0 && mask[j - 1] && lab[j - 1] < 0) { lab[j - 1] = id; q[qt++] = j - 1; }
+        if (x < aw - 1 && mask[j + 1] && lab[j + 1] < 0) { lab[j + 1] = id; q[qt++] = j + 1; }
+        if (y > 0 && mask[j - aw] && lab[j - aw] < 0) { lab[j - aw] = id; q[qt++] = j - aw; }
+        if (y < ah - 1 && mask[j + aw] && lab[j + aw] < 0) { lab[j + aw] = id; q[qt++] = j + aw; } }
+      sizes.push(cnt);
+    }
+    const big = Math.max(0, ...sizes), keepMin = Math.max(25, big * (0.25 - detail * 0.2)), seeded = new Set();
+    if (seeds) for (let i = 0; i < N; i++) if (seeds[i] === 1 && lab[i] >= 0) seeded.add(lab[i]);
+    for (let i = 0; i < N; i++) if (mask[i] && sizes[lab[i]] < keepMin && !seeded.has(lab[i])) mask[i] = 0;
+    // fill small holes so the outline stays clean
+    const bgl = new Uint8Array(N); let qh = 0, qt = 0;
+    for (let x = 0; x < aw; x++) for (const y of [0, ah - 1]) { const i = y * aw + x; if (!mask[i] && !bgl[i]) { bgl[i] = 1; q[qt++] = i; } }
+    for (let y = 0; y < ah; y++) for (const x of [0, aw - 1]) { const i = y * aw + x; if (!mask[i] && !bgl[i]) { bgl[i] = 1; q[qt++] = i; } }
+    while (qh < qt) { const j = q[qh++], x = j % aw, y = (j / aw) | 0;
+      for (const k of [x > 0 ? j - 1 : -1, x < aw - 1 ? j + 1 : -1, y > 0 ? j - aw : -1, y < ah - 1 ? j + aw : -1]) if (k >= 0 && !mask[k] && !bgl[k]) { bgl[k] = 1; q[qt++] = k; } }
+    for (let i = 0; i < N; i++) if (!bgl[i] && !(seeds && seeds[i] === 2)) mask[i] = 1;
+    outMask = mask;
+    for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) {
+      const i = y * aw + x; if (!mask[i]) continue;
+      if (x === 0 || y === 0 || x === aw - 1 || y === ah - 1 || !mask[i - 1] || !mask[i + 1] || !mask[i - aw] || !mask[i + aw]) edge[i] = 1;
+    }
+  } else {
+    let lum = new Float32Array(N);
+    for (let i = 0; i < N; i++) lum[i] = (0.2126 * px[i * 4] + 0.7152 * px[i * 4 + 1] + 0.0722 * px[i * 4 + 2]) / 255;
+    lum = boxBlur(lum, aw, ah, detail > 0.7 ? 0 : 1);
+    const mag = new Float32Array(N), dir = new Uint8Array(N);
+    for (let y = 1; y < ah - 1; y++) for (let x = 1; x < aw - 1; x++) {
+      const i = y * aw + x, L = k => lum[k];
+      const gx = -L(i - aw - 1) - 2 * L(i - 1) - L(i + aw - 1) + L(i - aw + 1) + 2 * L(i + 1) + L(i + aw + 1);
+      const gy = -L(i - aw - 1) - 2 * L(i - aw) - L(i - aw + 1) + L(i + aw - 1) + 2 * L(i + aw) + L(i + aw + 1);
+      mag[i] = Math.hypot(gx, gy); dir[i] = Math.abs(gx) > Math.abs(gy) ? 0 : 1;
+    }
+    const sorted = Float32Array.from(mag).sort(), thr = sorted[Math.floor(N * (0.95 - detail * 0.12))] || 0.1;
+    for (let y = 1; y < ah - 1; y++) for (let x = 1; x < aw - 1; x++) {
+      const i = y * aw + x, m = mag[i]; if (m < thr || m < 0.08) continue;
+      const a = dir[i] ? mag[i - aw] : mag[i - 1], b = dir[i] ? mag[i + aw] : mag[i + 1];
+      if (m >= a && m >= b) edge[i] = 1;
+    }
+  }
+  if (box && mode !== "subject") for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) if (x < box.x * aw || x >= (box.x + box.w) * aw || y < box.y * ah || y >= (box.y + box.h) * ah) edge[y * aw + x] = 0;
+  // overlays drawn at 4x: white (not played yet) and orange (played)
+  const S = 1, mk = col => { const c = document.createElement("canvas"); c.width = aw * S; c.height = ah * S; const x = c.getContext("2d"); x.fillStyle = col; for (let i = 0; i < N; i++) if (edge[i]) x.fillRect((i % aw) * S, ((i / aw) | 0) * S, S, S); return c; };
+  let count = 0; for (let i = 0; i < N; i++) if (edge[i]) count++;
+  return { edge, aw, ah, px, mask: outMask, canvas: mk(C.pink), white: mk(C.cream), dark: mk(C.ink), count };
+}
+
+function contourToSong() {
+  const bars = +$("imgBars").value, bpm = Math.max(40, Math.min(240, +$("imgBpm").value || 100));
+  const scale = SCALES[$("imgScale").value], oct = +$("imgOct").value, maxPer = 12;
+  const low = 60 - oct * 6, high = low + oct * 12;
+  const pitches = []; for (let p = low; p <= high; p++) if (scale.includes(p % 12)) pitches.push(p);
+  const steps = bars * 16, rows = pitches.length, { edge, aw, ah } = contour;
+  if ($("imgMode").value === "full" && contour.mask) return fullSubjectSong(bars, bpm, scale);
+  const occ = new Uint16Array(steps * rows);
+  for (let i = 0; i < edge.length; i++) if (edge[i]) {
+    const c = Math.min(steps - 1, Math.floor((i % aw) / aw * steps)), r = Math.min(rows - 1, Math.floor(((i / aw) | 0) / ah * rows));
+    occ[c * rows + r]++;
+  }
+  const step = 60 / bpm / 4, notes = []; let prev = new Map();
+  for (let c = 0; c < steps; c++) {
+    const on = []; for (let r = 0; r < rows; r++) if (occ[c * rows + r]) on.push(r);
+    let pick = on;
+    if (on.length > maxPer) { pick = [on[0], on[on.length - 1]]; const k = maxPer - 2; for (let j = 1; j <= k; j++) pick.push(on[Math.round(j * (on.length - 1) / (k + 1))]); }
+    const next = new Map();
+    for (const r of pick) {
+      const tr = (r === on[0] || r === on[on.length - 1]) ? 0 : 1, p = pitches[rows - 1 - r], key = p + ":" + tr, h = prev.get(key);
+      if (h) { h.d += step; next.set(key, h); }
+      else { const n = { t: c * step, d: step, p, v: tr ? 0.45 : 0.8, tr }; notes.push(n); next.set(key, n); }
+    }
+    prev = next;
+  }
+  for (const n of notes) n.d = Math.max(step * 0.6, n.d - step * 0.1);
+  return { notes, bpm, beats: 4, range: [low, high], length: steps * step, tracks: [{ name: "OUTLINE", color: PALETTE[0] }, { name: "DETAIL", color: PALETTE[2] }], fromImage: true };
+}
+function wholeImage(img) {
+  const aw = IMG_IN.w, ah = Math.round(img.height / img.width * aw), N = aw * ah;
+  const oc = document.createElement("canvas"); oc.width = aw; oc.height = ah;
+  const ox = oc.getContext("2d", { willReadFrequently: true }); ox.imageSmoothingQuality = "high"; ox.drawImage(img, 0, 0, aw, ah);
+  const px = ox.getImageData(0, 0, aw, ah).data, empty = () => { const c = document.createElement("canvas"); c.width = aw; c.height = ah; return c; };
+  return { edge: new Uint8Array(N), aw, ah, px, mask: new Uint8Array(N).fill(1), canvas: empty(), white: empty(), dark: empty(), count: N, whole: true };
+}
+// simplified like pixel art: a coarse grid, every pixel keeps the picture's own colour, each pixel = one note
+function fullSubjectSong(bars, bpm, scale) {
+  const { mask, px, aw, ah } = contour;
+  const cols = +$("imgPix").value, rows = Math.max(6, Math.round(cols / CROP_A));
+  let scaleNote = "", all = [];
+  for (const [lo, hi] of [[24, 108], [0, 127]]) { all = []; for (let p = lo; p <= hi; p++) if (scale.includes(p % 12)) all.push(p); if (all.length >= rows) break; }
+  if (all.length < rows) { all = []; for (let p = 0; p <= 127; p++) all.push(p); scaleNote = "格數太多，選的音階不夠用，這次自動改用半音。"; }
+  let i0 = all.findIndex(p => p >= 60) - Math.floor(rows / 2); i0 = Math.max(0, Math.min(all.length - rows, i0));
+  const pitches = all.slice(i0, i0 + rows);
+  const total = bars * 4 * 60 / bpm, colDur = total / cols;
+  const grid = new Array(cols * rows).fill(null);
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const x0 = Math.floor(c / cols * aw), x1 = Math.max(x0 + 1, Math.floor((c + 1) / cols * aw)), y0 = Math.floor(r / rows * ah), y1 = Math.max(y0 + 1, Math.floor((r + 1) / rows * ah));
+    let n = 0, m = 0, R = 0, G2 = 0, B = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * aw + x; n++; if (mask[i]) { m++; R += px[i * 4]; G2 += px[i * 4 + 1]; B += px[i * 4 + 2]; } }
+    if (m * 2 >= n) grid[r * cols + c] = [R / m, G2 / m, B / m];
+  }
+  const ghost = document.createElement("canvas"); ghost.width = aw; ghost.height = ah;
+  const gx = ghost.getContext("2d"), gi = gx.createImageData(aw, ah);
+  for (let i = 0; i < aw * ah; i++) if (mask[i]) { gi.data[i * 4] = px[i * 4]; gi.data[i * 4 + 1] = px[i * 4 + 1]; gi.data[i * 4 + 2] = px[i * 4 + 2]; gi.data[i * 4 + 3] = 255; }
+  gx.putImageData(gi, 0, 0);
+  const lum = c => (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+  const hex = c => "#" + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+  const band = c => { const l = lum(c); return l > 0.62 ? 0 : l > 0.32 ? 1 : 2; }; // tracks only group by brightness for sound / muting
+  const acc = [[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0]], samples = [[], [], []], notes = [], perCol = new Uint16Array(cols);
+  for (let r = 0; r < rows; r++) {
+    let c = 0;
+    while (c < cols) {
+      const col = grid[r * cols + c]; if (!col) { c++; continue; }
+      // merge neighbours that look like the same colour into one longer note
+      let e = c, sum = col.slice(), k = 1;
+      while (e + 1 < cols) { const nx = grid[r * cols + e + 1]; if (!nx) break; const avg = sum.map(v => v / k); if ((nx[0] - avg[0]) ** 2 + (nx[1] - avg[1]) ** 2 + (nx[2] - avg[2]) ** 2 > 22 * 22) break; e++; k++; sum[0] += nx[0]; sum[1] += nx[1]; sum[2] += nx[2]; }
+      const avg = sum.map(v => v / k), tr = band(avg); samples[tr].push(avg); acc[tr][0] += avg[0] * k; acc[tr][1] += avg[1] * k; acc[tr][2] += avg[2] * k; acc[tr][3] += k;
+      for (let j = c; j <= e; j++) perCol[j]++;
+      notes.push({ t: c * colDur, d: (e - c + 1) * colDur * 0.97, p: pitches[rows - 1 - r], v: 0.4 + lum(avg) * 0.5, tr, c: hex(avg) });
+      c = e + 1;
+    }
+  }
+  const names = ["LIGHT", "MID", "DARK"], used = [0, 1, 2].filter(i => acc[i][3]), remap = new Map(used.map((i, j) => [i, j]));
+  for (const n of notes) n.tr = remap.get(n.tr);
+  const tracks = used.map(i => { const sm = samples[i].slice().sort((a, b) => lum(b) - lum(a) || b[0] - a[0]), pick = []; for (let j = 0; j < 8 && sm.length; j++) pick.push(hex(sm[Math.floor(j / 8 * sm.length)])); return { name: names[i] + " 亮度", color: hex(acc[i].slice(0, 3).map(v => v / acc[i][3])), colors: pick }; });
+  return { notes, tracks: tracks.length ? tracks : [{ name: "PIXELS", color: PALETTE[0] }], bpm, beats: 4, range: [pitches[0], pitches[rows - 1]], rowPitches: pitches, length: total, fromImage: true, full: true, ghost, cols, scaleNote, gainScale: Math.min(1, 2.2 / Math.sqrt(Math.max(1, ...perCol))) };
+}
+/* ---------------- audio ---------------- */
+let actx = null, master, comp, anL, anR, anM, mediaDest;
+const voices = new Set();
+function unlockAudio() {
+  ensureAudio();
+  try { const b = actx.createBuffer(1, 1, 22050), src = actx.createBufferSource(); src.buffer = b; src.connect(actx.destination); src.start(0); } catch (e) {}
+  if (actx.state !== "running") actx.resume();
+  if (actx.state === "running") ["touchend", "click", "keydown"].forEach(ev => window.removeEventListener(ev, unlockAudio, true));
+}
+["touchend", "click", "keydown"].forEach(ev => window.addEventListener(ev, unlockAudio, true));
+function ensureAudio() {
+  if (!actx) {
+    actx = new (window.AudioContext || window.webkitAudioContext)();
+    master = actx.createGain(); master.gain.value = 0.8;
+    comp = actx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+    master.connect(comp); comp.connect(actx.destination);
+    const sp = actx.createChannelSplitter(2); comp.connect(sp);
+    anL = actx.createAnalyser(); anR = actx.createAnalyser(); anL.fftSize = anR.fftSize = 1024;
+    sp.connect(anL, 0); sp.connect(anR, 1);
+    anM = actx.createAnalyser(); anM.fftSize = 2048; anM.smoothingTimeConstant = 0.75; comp.connect(anM);
+    try { mediaDest = actx.createMediaStreamDestination(); comp.connect(mediaDest); } catch (e) { mediaDest = null; }
+    // keep a tiny inaudible tone flowing into the recording: some browsers (Safari) squash the video timeline
+    // while the audio track is silent, which made the empty intro look fast-forwarded
+    if (mediaDest) { const ko = actx.createOscillator(), kg = actx.createGain(); ko.frequency.value = 30; kg.gain.value = 0.0008; ko.connect(kg); kg.connect(mediaDest); ko.start(); }
+  }
+  if (actx.state === "suspended") actx.resume();
+}
+const PRESETS = [
+  { type: "triangle", a: 0.004, dec: 0.7, sus: 0.18, rel: 0.25, gain: 0.34 },
+  { type: "sawtooth", cut: 2400, a: 0.015, dec: 0.4, sus: 0.6, rel: 0.18, gain: 0.11 },
+  { type: "sine", a: 0.01, dec: 0.6, sus: 0.5, rel: 0.2, gain: 0.42 },
+  { type: "square", cut: 1600, a: 0.01, dec: 0.3, sus: 0.3, rel: 0.2, gain: 0.08 },
+];
+function voiceStart(p, v, when, tr) {
+  const pr = PRESETS[tr % PRESETS.length], drum = song.tracks[tr] && song.tracks[tr].drum;
+  const osc = actx.createOscillator(), env = actx.createGain();
+  osc.type = drum ? "triangle" : pr.type;
+  osc.frequency.value = drum ? 60 + (p % 12) * 25 : 440 * 2 ** ((p - 69) / 12);
+  let node = osc;
+  if (pr.cut && !drum) { const f = actx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = pr.cut; osc.connect(f); node = f; }
+  node.connect(env);
+  let out = env;
+  if (actx.createStereoPanner) { const pn = actx.createStereoPanner(); pn.pan.value = [-0.35, 0.35, 0, -0.6, 0.6][tr % 5]; env.connect(pn); out = pn; }
+  out.connect(master);
+  const peak = pr.gain * (0.35 + 0.65 * v) * (drum ? 0.6 : 1) * (song.gainScale || 1);
+  env.gain.setValueAtTime(0, when);
+  env.gain.linearRampToValueAtTime(peak, when + pr.a);
+  env.gain.setTargetAtTime(peak * (drum ? 0.001 : pr.sus), when + pr.a, (drum ? 0.08 : pr.dec) / 3);
+  osc.start(when);
+  const h = { osc, env, release(t) { t = Math.max(t, when + pr.a); env.gain.cancelScheduledValues(t); env.gain.setTargetAtTime(0, t, pr.rel / 3); osc.stop(t + pr.rel * 3); } };
+  voices.add(h); osc.onended = () => voices.delete(h);
+  return h;
+}
+function stopVoices() { if (!actx) return; const t = actx.currentTime; for (const h of voices) { try { h.env.gain.cancelScheduledValues(t); h.env.gain.setTargetAtTime(0, t, 0.02); h.osc.stop(t + 0.1); } catch (e) {} } }
+
+/* ---------------- transport ---------------- */
+let playing = false, startCtx = 0, offset = 0, schedIdx = 0, scheduledUntil = 0;
+const muted = new Set();
+const now = () => playing ? Math.max(0, actx.currentTime - startCtx + offset) : offset;
+function play(lead = 0.06) {
+  ensureAudio();
+  if (!liveTake && offset >= song.duration - 0.01) offset = 0;
+  startCtx = actx.currentTime + lead; playing = true;
+  schedIdx = lowerBound(offset); scheduledUntil = offset;
+  $("playBtn").textContent = "暫停";
+}
+function pause() { if (!playing) return; offset = now(); playing = false; stopVoices(); $("playBtn").textContent = "播放"; }
+function seekTo(t) { const was = playing; if (was) pause(); offset = Math.max(0, t); if (was) play(); }
+setInterval(() => {
+  if (!playing) return;
+  const t = now(), until = t + 0.15, n = song.notes;
+  while (schedIdx < n.length && n[schedIdx].t < until) {
+    const x = n[schedIdx++];
+    if (x.held || muted.has(x.tr)) continue;
+    const when = startCtx + (x.t - offset);
+    if (when < actx.currentTime - 0.05) continue;
+    voiceStart(x.p, x.v, Math.max(when, actx.currentTime), x.tr).release(Math.max(when, actx.currentTime) + x.d);
+  }
+  scheduledUntil = until;
+  if (liveTake) {
+    const T = liveTake;
+    while (T.k < T.endBeat && T.start + T.k * T.spb < actx.currentTime + 0.15) {
+      const k = T.k, when = T.start + k * T.spb;
+      if (k < 0 || metroChk.checked) metroClick(when, ((k % T.beats) + T.beats) % T.beats === 0);
+      if (k <= 0) setTimeout(() => { if (liveTake === T) say(k < 0 ? `預備拍 ${T.beats + k + 1} / ${T.beats}` : "錄音中…"); }, Math.max(0, (when - actx.currentTime) * 1000));
+      T.k++;
+    }
+    if (t >= T.len) stopLiveRec();
+    return;
+  }
+  if (t > song.duration + (recording ? 0.25 : 0.6)) { pause(); offset = song.duration; if (recording) stopRecording(); } // short tail so the last notes ring out
+}, 25);
+
+/* ---------------- live input ---------------- */
+const metroChk = $("metroChk");
+let liveTake = null, liveReady = false;
+// metronome goes straight to the speakers, never into master → it stays out of the analysers and the exported video
+function metroClick(when, accent) {
+  const o = actx.createOscillator(), gn = actx.createGain();
+  o.type = "square"; o.frequency.value = accent ? 1760 : 1175;
+  gn.gain.setValueAtTime(0, when); gn.gain.linearRampToValueAtTime(accent ? 0.22 : 0.13, when + 0.002); gn.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+  o.connect(gn); gn.connect(actx.destination); o.start(when); o.stop(when + 0.08);
+}
+function updateLiveUI() {
+  $("liveSetBtn").disabled = liveReady; $("liveSetBtn").textContent = liveReady ? "✓ 已設定" : "設定完成";
+  $("liveRecBtn").disabled = !liveReady; $("liveRecBtn").textContent = liveTake ? "■ 停止錄音" : "● 錄音";
+  kb.classList.toggle("locked", !liveReady);
+}
+function startLiveRec() {
+  if (!liveReady) { say("先設定長度和速度，按「設定完成」後才能錄音。"); return; }
+  if (recording) stopRecording();
+  ensureAudio(); pause();
+  song.notes = []; prepare(); renderTracks();
+  offset = 0; lastT = 0; sparks.length = 0;
+  const spb = 60 / song.bpm, beats = song.beats || 4;
+  play(spb * beats + 0.12); // one bar of count-in: the clock holds at 0:00 until bar 1
+  liveTake = { start: startCtx, spb, beats, k: -beats, endBeat: Math.round(song.length / spb), len: song.length };
+  updateLiveUI(); say("預備…");
+}
+function stopLiveRec() {
+  if (!liveTake) return;
+  const T = liveTake, end = Math.min(now(), T.len); liveTake = null;
+  for (const x of held.values()) if (x.n) { x.n.d = Math.max(0.05, end - x.n.t); delete x.n.held; x.n = null; }
+  song.notes = song.notes.filter(n => n.t < T.len);
+  for (const n of song.notes) n.d = Math.min(n.d, T.len - n.t);
+  pause(); offset = 0; seekEl.value = 0; prepare(); renderTracks(); updateLiveUI();
+  say(`錄好了，共 ${song.notes.length} 個音。按「播放」聽聽看，或再按「錄音」重錄。`);
+}
+const held = new Map(), liveActive = new Map();
+function liveTrack() {
+  let i = song.tracks.findIndex(t => t.name === "LIVE");
+  if (i < 0) { i = song.tracks.length; song.tracks.push({ name: "LIVE", color: PALETTE[i % PALETTE.length] }); renderTracks(); }
+  return i;
+}
+function noteOn(p, v) {
+  if (tab === "live" && !liveReady) { say("先設定長度和速度，按「設定完成」後才能開始彈。"); return; }
+  ensureAudio();
+  if (held.has(p)) noteOff(p);
+  let tr = 0, n = null;
+  if (tab === "live") tr = liveTrack();
+  if (liveTake) {
+    const raw = actx.currentTime - startCtx + offset;
+    if (raw > -0.2 && raw < liveTake.len) { n = { t: Math.max(0, raw), d: 0.05, p, v, tr, held: true }; song.notes.push(n); prepare(); }
+  }
+  const h = voiceStart(p, v, actx.currentTime, tr);
+  held.set(p, { h, n }); liveActive.set(p, { v, tr, at: performance.now() }); spawnRipple(p, v, tr);
+  kbMark(p, true);
+}
+function noteOff(p) {
+  const x = held.get(p); if (!x) return;
+  x.h.release(actx.currentTime);
+  if (x.n) { x.n.d = Math.max(0.05, Math.min(now(), liveTake ? liveTake.len : Infinity) - x.n.t); delete x.n.held; prepare(); }
+  held.delete(p); liveActive.delete(p); kbMark(p, false);
+}
+$("midiConnectBtn").onclick = async () => {
+  if (!navigator.requestMIDIAccess) { say(/iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ? "iPhone／iPad 的瀏覽器不支援接 MIDI 鍵盤（蘋果沒開放）。要接 MIDI 鍵盤請用電腦版 Chrome 或 Edge；手機可以先用下面的螢幕鍵盤。" : "這個瀏覽器不支援接 MIDI 鍵盤。請改用電腦版 Chrome 或 Edge。"); return; }
+  try {
+    const acc = await navigator.requestMIDIAccess();
+    const bind = () => { let k = 0; for (const inp of acc.inputs.values()) { inp.onmidimessage = onMidi; k++; } say(k ? `已連接 ${k} 個 MIDI 裝置，可以開始彈。` : "沒有找到 MIDI 裝置。接上後會自動連接。"); };
+    acc.onstatechange = bind; bind();
+  } catch (e) { say("瀏覽器沒有允許使用 MIDI 裝置。請在網址列旁的權限設定裡允許「MIDI 裝置」，或在新分頁單獨開啟這個頁面再試一次。"); }
+};
+function onMidi(e) {
+  const [st, a, b] = e.data, hi = st & 0xF0;
+  if (hi === 0x90 && b > 0) noteOn(a, b / 127);
+  else if (hi === 0x80 || (hi === 0x90 && b === 0)) noteOff(a);
+}
+// on-screen keyboard
+let kbBase = 60;
+const kb = $("kb"), kbKeys = new Map();
+function buildKb() {
+  kb.innerHTML = ""; kbKeys.clear();
+  const whites = []; for (let p = kbBase; p <= kbBase + 24; p++) if (![1,3,6,8,10].includes(p % 12)) whites.push(p);
+  const ww = 100 / whites.length;
+  whites.forEach((p, i) => { const el = document.createElement("div"); el.className = "w"; el.style.left = i * ww + "%"; el.style.width = ww + "%"; el.dataset.p = p; kb.appendChild(el); kbKeys.set(p, el); });
+  for (let p = kbBase; p <= kbBase + 24; p++) if ([1,3,6,8,10].includes(p % 12)) {
+    const i = whites.indexOf(p - 1); const el = document.createElement("div"); el.className = "b";
+    el.style.left = (i + 1) * ww - ww * 0.32 + "%"; el.style.width = ww * 0.64 + "%"; el.dataset.p = p; kb.appendChild(el); kbKeys.set(p, el);
+  }
+}
+function kbMark(p, on) { const el = kbKeys.get(p); if (el) el.classList.toggle("on", on); }
+const ptrNote = new Map();
+kb.addEventListener("pointerdown", e => { const p = +e.target.dataset.p; if (!p) return; e.preventDefault(); kb.setPointerCapture(e.pointerId); ptrNote.set(e.pointerId, p); noteOn(p, 0.8); });
+const ptrUp = e => { const p = ptrNote.get(e.pointerId); if (p != null) { noteOff(p); ptrNote.delete(e.pointerId); } };
+kb.addEventListener("pointerup", ptrUp); kb.addEventListener("pointercancel", ptrUp);
+const KEYMAP = { a:0, w:1, s:2, e:3, d:4, f:5, t:6, g:7, y:8, h:9, u:10, j:11, k:12 };
+let octShift = 0; const keyHeld = new Map();
+window.addEventListener("keydown", e => {
+  if (e.repeat || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === "z") { octShift = Math.max(-3, octShift - 1); say(`八度：${octShift >= 0 ? "+" : ""}${octShift}`); return; }
+  if (k === "x") { octShift = Math.min(3, octShift + 1); say(`八度：${octShift >= 0 ? "+" : ""}${octShift}`); return; }
+  if (k in KEYMAP && !keyHeld.has(k)) { const p = 60 + KEYMAP[k] + octShift * 12; keyHeld.set(k, p); noteOn(p, 0.8); }
+});
+window.addEventListener("keyup", e => { const k = e.key.toLowerCase(); if (keyHeld.has(k)) { noteOff(keyHeld.get(k)); keyHeld.delete(k); } });
+
+/* ---------------- layout + crop editor ---------------- */
+// low-res pixel layout (270×480, shown at 4×)
+const IMG_IN = { x: 16, y: 50, w: 238, h: 146 };
+const ROLL_IN = { x: 16, y: 222, w: 238, h: 146 };
+const CROP_A = ROLL_IN.w / ROLL_IN.h; // crop ratio = piano-roll ratio, so shapes are never squashed
+
+let origImg = null, subjBox = null, subjSeeds = null;
+// fixed frame (same ratio as the piano roll); the picture moves and zooms underneath it
+const FW = 960, FH = Math.round(960 / CROP_A);
+const SG_W = IMG_IN.w, SG_H = Math.round(IMG_IN.w / CROP_A); // brush grid = analysis grid
+const ed = { img: null, z: 1, zc: 1, tx: 0, ty: 0, subj: null, mode: "pos", drag: null, seeds: null, brush: 1, prevCv: null, last: null, pts: new Map(), pinch: null };
+const edEl = $("ed"), ecv = $("edCanvas"), eg = ecv.getContext("2d");
+ecv.width = FW; ecv.height = FH;
+
+function newSeeds() { ed.seeds = new Uint8Array(SG_W * SG_H); ed.prevCv = null; }
+function edCover() { // scale so the picture exactly fills the frame, centred
+  const iw = ed.img.width, ih = ed.img.height;
+  ed.zc = Math.max(FW / iw, FH / ih); ed.z = ed.zc; ed.tx = (FW - iw * ed.z) / 2; ed.ty = (FH - ih * ed.z) / 2;
+  $("edZoom").value = "100";
+}
+function clampView() { const iw = ed.img.width * ed.z, ih = ed.img.height * ed.z; ed.tx = Math.min(0, Math.max(FW - iw, ed.tx)); ed.ty = Math.min(0, Math.max(FH - ih, ed.ty)); }
+function zoomAt(nz, fx, fy) {
+  nz = Math.max(ed.zc, Math.min(ed.zc * 6, nz)); const k = nz / ed.z;
+  ed.tx = fx - (fx - ed.tx) * k; ed.ty = fy - (fy - ed.ty) * k; ed.z = nz; clampView();
+  $("edZoom").value = String(Math.round(ed.z / ed.zc * 100));
+}
+function viewMoved() { if (ed.subj || (ed.seeds && ed.seeds.some(v => v))) { ed.subj = null; newSeeds(); } }
+function openEditor(keep) {
+  if (!keep || !ed.img) ed.img = origImg;
+  if (keep && ed.last) { ed.z = ed.last.z; ed.zc = ed.last.zc; ed.tx = ed.last.tx; ed.ty = ed.last.ty; ed.subj = ed.last.subj ? { ...ed.last.subj } : null; ed.seeds = ed.last.seeds ? ed.last.seeds.slice() : new Uint8Array(SG_W * SG_H); $("edZoom").value = String(Math.round(ed.z / ed.zc * 100)); }
+  else { edCover(); ed.subj = null; newSeeds(); }
+  setEdMode("pos"); edEl.hidden = false;
+}
+function makeCrop(ow) {
+  const oh = Math.round(ow / CROP_A), k = ow / FW, out = document.createElement("canvas"); out.width = ow; out.height = oh;
+  const x = out.getContext("2d"); x.imageSmoothingQuality = "high";
+  x.drawImage(ed.img, ed.tx * k, ed.ty * k, ed.img.width * ed.z * k, ed.img.height * ed.z * k);
+  return out;
+}
+const boxNorm = () => { const b = ed.subj; return b ? { x: b.x / FW, y: b.y / FH, w: b.w / FW, h: b.h / FH } : null; };
+const hasSeeds = () => ed.seeds && ed.seeds.some(v => v);
+const seedPack = () => hasSeeds() ? { data: ed.seeds.slice(), w: SG_W, h: SG_H } : null;
+function edPreview() {
+  if (!ed.subj && !hasSeeds()) { ed.prevCv = null; edDraw(); return; }
+  const pr = findContour(makeCrop(SG_W * 3), "subject", 0.5, false, boxNorm(), seedPack());
+  const { aw, ah, mask, edge } = pr, c = document.createElement("canvas"); c.width = aw; c.height = ah;
+  const x = c.getContext("2d"), im = x.createImageData(aw, ah);
+  for (let i = 0; i < aw * ah; i++) {
+    const o = i * 4;
+    if (edge[i]) { im.data[o] = 255; im.data[o + 1] = 79; im.data[o + 2] = 176; im.data[o + 3] = 255; }
+    else if (!mask[i]) { im.data[o] = 5; im.data[o + 1] = 4; im.data[o + 2] = 9; im.data[o + 3] = 170; }
+  }
+  x.putImageData(im, 0, 0); ed.prevCv = c; edDraw();
+}
+function setEdMode(m) {
+  ed.mode = m;
+  [["pos", "edModeCrop"], ["subj", "edModeSubj"], ["fix", "edModeFix"]].forEach(([k, id]) => $(id).setAttribute("aria-pressed", k === m));
+  $("edBrushRow").hidden = m !== "fix"; $("edZoomRow").hidden = m !== "pos";
+  $("edHint").textContent = m === "pos"
+    ? "圖片已自動放大到剛好填滿框。拖曳可以移動，雙指捏合、滾輪或下面的拉桿可以放大。"
+    : m === "subj" ? (ed.subj ? "粉紅線就是抓到的主體。不滿意可以重新拖一個框。" : "想只轉換某個主體就拖一個框把它框起來；不框的話，整張圖都會轉成像素。")
+    : "用「加入」塗在漏掉的地方，用「擦掉」塗在多抓的背景上。放開手指就會重新計算。";
+  if (m !== "pos") edPreview(); else edDraw();
+}
+function edDraw() {
+  eg.imageSmoothingEnabled = true; eg.imageSmoothingQuality = "high";
+  eg.fillStyle = "#0b0912"; eg.fillRect(0, 0, FW, FH);
+  eg.drawImage(ed.img, ed.tx, ed.ty, ed.img.width * ed.z, ed.img.height * ed.z);
+  if (ed.mode !== "pos" && ed.prevCv) { eg.imageSmoothingEnabled = false; eg.drawImage(ed.prevCv, 0, 0, FW, FH); }
+  if (ed.mode === "fix" && ed.seeds) {
+    const cw = FW / SG_W, ch = FH / SG_H;
+    for (let i = 0; i < ed.seeds.length; i++) if (ed.seeds[i]) { eg.fillStyle = ed.seeds[i] === 1 ? "rgba(255,232,245,0.55)" : "rgba(106,92,255,0.6)"; eg.fillRect((i % SG_W) * cw, ((i / SG_W) | 0) * ch, Math.ceil(cw), Math.ceil(ch)); }
+  }
+  if (ed.mode === "pos") {
+    eg.strokeStyle = "rgba(255,255,255,0.3)"; eg.lineWidth = 1.5; eg.beginPath();
+    for (let k = 1; k < 3; k++) { eg.moveTo(FW * k / 3, 0); eg.lineTo(FW * k / 3, FH); eg.moveTo(0, FH * k / 3); eg.lineTo(FW, FH * k / 3); }
+    eg.stroke();
+  }
+  if (ed.subj && ed.mode !== "pos") { const b = ed.subj; eg.strokeStyle = "#ffe8f5"; eg.lineWidth = 3; eg.setLineDash([12, 8]); eg.strokeRect(b.x, b.y, b.w, b.h); eg.setLineDash([]); }
+}
+function edPt(e) { const r = ecv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * FW, y: (e.clientY - r.top) / r.height * FH }; }
+function paint(p) {
+  const gx = p.x / FW * SG_W, gy = p.y / FH * SG_H, r = +$("edBrushSize").value;
+  for (let y = Math.floor(gy - r); y <= gy + r; y++) for (let x = Math.floor(gx - r); x <= gx + r; x++)
+    if (x >= 0 && y >= 0 && x < SG_W && y < SG_H && (x - gx) ** 2 + (y - gy) ** 2 <= r * r) ed.seeds[y * SG_W + x] = ed.brush;
+}
+const clampF = p => ({ x: Math.max(0, Math.min(FW, p.x)), y: Math.max(0, Math.min(FH, p.y)) });
+ecv.addEventListener("pointerdown", e => {
+  e.preventDefault(); ecv.setPointerCapture(e.pointerId);
+  const p = edPt(e); ed.pts.set(e.pointerId, p);
+  if (ed.mode === "pos") {
+    if (ed.pts.size === 2) { const [a, b] = [...ed.pts.values()]; ed.pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, z: ed.z }; ed.drag = null; }
+    else ed.drag = { type: "pan", x: p.x, y: p.y };
+  } else if (ed.mode === "subj") { const q = clampF(p); ed.drag = { type: "subj", sx: q.x, sy: q.y }; ed.subj = { x: q.x, y: q.y, w: 0, h: 0 }; }
+  else { ed.drag = { type: "paint" }; paint(p); edDraw(); }
+});
+ecv.addEventListener("pointermove", e => {
+  if (!ed.pts.has(e.pointerId)) return;
+  const p = edPt(e); ed.pts.set(e.pointerId, p);
+  if (ed.mode === "pos" && ed.pinch && ed.pts.size >= 2) {
+    const [a, b] = [...ed.pts.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    ed.tx += cx - ed.pinch.cx; ed.ty += cy - ed.pinch.cy; ed.pinch.cx = cx; ed.pinch.cy = cy;
+    zoomAt(ed.pinch.z * d / Math.max(1, ed.pinch.d), cx, cy); viewMoved(); edDraw(); return;
+  }
+  const d = ed.drag; if (!d) return;
+  if (d.type === "pan") { ed.tx += p.x - d.x; ed.ty += p.y - d.y; d.x = p.x; d.y = p.y; clampView(); viewMoved(); }
+  else if (d.type === "subj") { const q = clampF(p); ed.subj = { x: Math.min(d.sx, q.x), y: Math.min(d.sy, q.y), w: Math.abs(q.x - d.sx), h: Math.abs(q.y - d.sy) }; }
+  else paint(p);
+  edDraw();
+});
+const edUp = e => {
+  ed.pts.delete(e.pointerId); if (ed.pts.size < 2) ed.pinch = null;
+  const d = ed.drag; if (ed.pts.size === 0) ed.drag = null; if (!d) return;
+  if (d.type === "subj") { if (ed.subj && (ed.subj.w < 20 || ed.subj.h < 20)) ed.subj = null; setEdMode("subj"); }
+  else if (d.type === "paint") edPreview();
+};
+ecv.addEventListener("pointerup", edUp); ecv.addEventListener("pointercancel", edUp);
+ecv.addEventListener("wheel", e => {
+  if (ed.mode !== "pos") return; e.preventDefault();
+  const p = edPt(e); zoomAt(ed.z * Math.exp(-e.deltaY * 0.0015), p.x, p.y); viewMoved(); edDraw();
+}, { passive: false });
+$("edZoom").addEventListener("input", () => { zoomAt(ed.zc * +$("edZoom").value / 100, FW / 2, FH / 2); viewMoved(); edDraw(); });
+$("edModeCrop").onclick = () => setEdMode("pos");
+$("edModeSubj").onclick = () => setEdMode("subj");
+$("edModeFix").onclick = () => setEdMode("fix");
+$("edAdd").onclick = () => { ed.brush = 1; $("edAdd").setAttribute("aria-pressed", true); $("edErase").setAttribute("aria-pressed", false); };
+$("edErase").onclick = () => { ed.brush = 2; $("edAdd").setAttribute("aria-pressed", false); $("edErase").setAttribute("aria-pressed", true); };
+$("edClearSeeds").onclick = () => { newSeeds(); edPreview(); };
+$("edClearBox").onclick = () => { ed.subj = null; newSeeds(); setEdMode(ed.mode); };
+$("edReset").onclick = () => { edCover(); ed.subj = null; newSeeds(); setEdMode("pos"); };
+$("edRotate").onclick = () => {
+  const src = ed.img, c = document.createElement("canvas"); c.width = src.height; c.height = src.width;
+  const x = c.getContext("2d"); x.translate(c.width, 0); x.rotate(Math.PI / 2); x.drawImage(src, 0, 0);
+  ed.img = c; ed.last = null; edCover(); ed.subj = null; newSeeds(); setEdMode("pos");
+};
+$("edCancel").onclick = () => { edEl.hidden = true; };
+$("edOk").onclick = () => {
+  srcImg = makeCrop(1200);
+  subjBox = boxNorm(); subjSeeds = seedPack();
+  ed.last = { z: ed.z, zc: ed.zc, tx: ed.tx, ty: ed.ty, subj: ed.subj ? { ...ed.subj } : null, seeds: ed.seeds ? ed.seeds.slice() : null };
+  edEl.hidden = true; $("editImgBtn").disabled = false;
+  convertImage();
+};
+edEl.addEventListener("keydown", e => { if (e.key === "Escape") edEl.hidden = true; });
+
+/* ---------------- cover image + colour theme ---------------- */
+const covers = { live: null }, themes = { image: null, live: null };
+let coverSmall = null;
+const hexOf = (r, g2, b) => "#" + [r, g2, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
+function hsl(h, s2, l) { // h 0..360
+  const a = s2 * Math.min(l, 1 - l), f = n => { const k = (n + h / 30) % 12; return l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)); };
+  return hexOf(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+function toHsl(r, g2, b) {
+  r /= 255; g2 /= 255; b /= 255; const mx = Math.max(r, g2, b), mn = Math.min(r, g2, b), l = (mx + mn) / 2, d = mx - mn;
+  let h = 0, s2 = 0;
+  if (d) { s2 = d / (1 - Math.abs(2 * l - 1)); h = mx === r ? ((g2 - b) / d) % 6 : mx === g2 ? (b - r) / d + 2 : (r - g2) / d + 4; h = (h * 60 + 360) % 360; }
+  return [h, s2, l];
+}
+function themeFromImage(img) {
+  const c = document.createElement("canvas"); c.width = c.height = 48; const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(img, 0, 0, 48, 48);
+  const d = x.getImageData(0, 0, 48, 48).data, pts = []; for (let i = 0; i < d.length; i += 4) pts.push([d[i], d[i + 1], d[i + 2]]);
+  const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2 + (a[2] - b[2]) ** 2, cs = [pts[0].slice()];
+  while (cs.length < 8) { let best = pts[0], bd = -1; for (const p of pts) { let m = Infinity; for (const c2 of cs) m = Math.min(m, d2(p, c2)); if (m > bd) { bd = m; best = p; } } if (bd < 200) break; cs.push(best.slice()); }
+  let cnt = [];
+  for (let it = 0; it < 8; it++) {
+    const acc = cs.map(() => [0, 0, 0, 0]);
+    for (const p of pts) { let bj = 0, bd = Infinity; cs.forEach((c2, j) => { const v = d2(p, c2); if (v < bd) { bd = v; bj = j; } }); const a = acc[bj]; a[0] += p[0]; a[1] += p[1]; a[2] += p[2]; a[3]++; }
+    acc.forEach((a, j) => { if (a[3]) cs[j] = [a[0] / a[3], a[1] / a[3], a[2] / a[3]]; }); cnt = acc.map(a => a[3]);
+  }
+  const cols = cs.map((c2, j) => { const [h, s2, l] = toHsl(...c2); return { h, s: s2, l, n: cnt[j], ch: (Math.max(...c2) - Math.min(...c2)) / 255 }; });
+  const score2 = c2 => c2.n * c2.ch * c2.ch * Math.max(0.1, 1 - Math.abs(c2.l - 0.5) * 1.5); // favour strong mid-tone colours over pale or dark ones
+  const vivid = cols.filter(c2 => c2.ch > 0.12 && c2.l > 0.15 && c2.l < 0.9).sort((a, b) => score2(b) - score2(a));
+  const dom = cols.slice().sort((a, b) => b.n - a.n)[0];
+  const h1 = vivid.length ? vivid[0].h : dom.h, s1 = vivid.length ? Math.max(0.55, vivid[0].s) : 0.12;
+  const second = vivid.find(c2 => Math.min(Math.abs(c2.h - h1), 360 - Math.abs(c2.h - h1)) > 28);
+  const h2 = second ? second.h : (h1 + 40) % 360, s2 = second ? Math.max(0.5, second.s) : s1;
+  const pal = [hsl(h1, s1, 0.62), hsl(h2, s2, 0.66), hsl(h1, s1 * 0.8, 0.82), hsl(h2, s2, 0.5)];
+  for (const v of vivid.slice(1)) if (pal.length < 7) pal.push(hsl(v.h, Math.max(0.5, v.s), 0.64));
+  while (pal.length < 7) pal.push(hsl((h1 + pal.length * 25) % 360, s1, 0.6));
+  pal.push(hsl(h1, Math.min(1, s1 + 0.15), 0.52));
+  const hb = dom.h, sb = Math.min(0.45, dom.s * 0.8 + 0.1);
+  return { pal, C: { pink: pal[0], hot: hsl(h1, Math.min(1, s1 + 0.15), 0.55), blush: hsl(h1, s1 * 0.8, 0.8), cream: hsl(h1, s1 * 0.5, 0.94), violet: pal[1], indigo: hsl(h2, s2, 0.55), orange: pal[0],
+    lav: hsl(h2, s2 * 0.6, 0.8), dim: hsl(h2, 0.3, 0.38), shadow: hsl(hb, sb, 0.22), grid: hsl(hb, sb, 0.14), line: hsl(hb, sb, 0.19), navy: hsl(hb, sb, 0.045), navy2: hsl(hb, sb, 0.045), lav2: hsl(hb, sb, 0.085), bg0: hsl(hb, sb, 0.018) } };
+}
+function pressColor(c, onWhite) {
+  const n = parseInt(c.slice(1), 16), l = (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  return onWhite ? (l > 0.72 ? "#7d7d7d" : c) : (l < 0.25 ? "#8a8a8a" : c);
+}
+function applyTheme(th) {
+  Object.assign(C, th ? th.C : DEFAULT_C);
+  PALETTE.splice(0, PALETTE.length, ...(th ? th.pal : DEFAULT_PAL0));
+  renderBg(); if (song) renderTracks();
+  const st = document.documentElement.style; st.setProperty("--press", pressColor(C.pink, true)); st.setProperty("--pink", C.pink); st.setProperty("--violet", C.violet); st.setProperty("--hot", C.hot);
+}
+function setCover(img) { // each page keeps its own cover and its own colours
+  covers[tab] = img; themes[tab] = img ? themeFromImage(img) : null;
+  applyTheme(themes[tab]); $("coverClear").disabled = !img;
+}
+/* ---------------- UI wiring ---------------- */
+const emptySong = (name, bpm = 100, length) => ({ notes: [], bpm, beats: 4, length, tracks: [{ name, color: PALETTE[0] }], fromImage: false, range: name === "LIVE" ? [48, 84] : undefined });
+function switchTab(name) {
+  if (name === tab) return;
+  stopLiveRec(); pause(); songs[tab] = song; tab = name;
+  for (const t of ["image", "live"]) { $("t-" + t).setAttribute("aria-selected", t === name); $("p-" + t).hidden = t !== name; }
+  setSong(songs[name] || (name === "live" ? emptySong("LIVE") : emptySong("OUTLINE")));
+  $("coverSec").hidden = name === "image";
+  if (name !== "image") $("coverClear").disabled = !covers[name];
+  applyTheme(themes[name]);
+  ridgeHist.length = 0; smPeaks.fill(0); petalsS.fill(0); heartGlow.fill(0); lastChord = ""; sparks.length = 0; // start each page clean
+}
+$("coverFile").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image(); img.onload = () => { setCover(img); say("封面已換上，這一頁的配色會跟著這張圖。"); }; img.onerror = () => say("這張圖片讀不出來，換一張試試。");
+  img.src = URL.createObjectURL(f); e.target.value = "";
+};
+$("coverClear").onclick = () => { setCover(null); say("已移除封面，這一頁的配色回到黑白。"); };
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+$("playBtn").onclick = () => { if (liveTake) { stopLiveRec(); return; } playing ? pause() : play(); };
+$("restartBtn").onclick = () => { stopLiveRec(); seekTo(0); if (!playing) play(); };
+$("clearBtn").onclick = () => { stopLiveRec(); pause(); song.notes = []; setSong(song); songs.live = song; say("已清空。按「錄音」重新錄。"); };
+$("liveRecBtn").onclick = () => liveTake ? stopLiveRec() : startLiveRec();
+
+/* ---------------- length / tempo settings ---------------- */
+const RANGES = {
+  imgBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
+  liveBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
+  liveBars: { min: 1, max: 64, def: 8, name: "長度", unit: " 小節" },
+};
+for (const id in RANGES) { const e = document.createElement("div"); e.className = "err"; e.id = id + "Err"; e.setAttribute("role", "alert"); $(id).closest("label").after(e); }
+function checkRange(id, quiet) { // out of range → snap to the nearest limit and say so under the field
+  const r = RANGES[id], el = $(id), err = $(id + "Err"), raw = el.value.trim(), v = Math.round(+raw);
+  let out = v, msg = "";
+  if (raw === "" || !isFinite(+raw)) { out = r.def; msg = `${r.name}要填數字，已改回 ${r.def}${r.unit}。`; }
+  else if (v < r.min) { out = r.min; msg = `${r.name}最低是 ${r.min}${r.unit}，已自動改成 ${r.min}。`; }
+  else if (v > r.max) { out = r.max; msg = `${r.name}最高是 ${r.max}${r.unit}，已自動改成 ${r.max}。`; }
+  el.value = out; if (msg || !quiet) err.textContent = msg;
+  return out;
+}
+for (const id in RANGES) $(id).addEventListener("change", () => checkRange(id));
+const clearErr = id => { $(id + "Err").textContent = ""; };
+
+// live: nothing can be played until length + tempo are confirmed
+["liveBpm", "liveBars"].forEach(id => $(id).addEventListener("input", () => { if (liveReady) { stopLiveRec(); liveReady = false; updateLiveUI(); } }));
+$("liveSetBtn").onclick = () => {
+  const bars = checkRange("liveBars"), bpm = checkRange("liveBpm");
+  stopLiveRec(); pause();
+  const s = songs.live && tab !== "live" ? songs.live : song, old = s.bpm;
+  if (s.notes.length && old !== bpm) for (const n of s.notes) { n.t *= old / bpm; n.d *= old / bpm; } // keep what was played on the same beats
+  s.bpm = bpm; s.length = bars * s.beats * 60 / bpm;
+  s.notes = s.notes.filter(n => n.t < s.length); for (const n of s.notes) n.d = Math.min(n.d, s.length - n.t);
+  setSong(s); songs.live = s; liveReady = true; updateLiveUI();
+  say(`設定完成：${bars} 小節、${bpm} BPM。可以開始彈了，按「錄音」會先數一小節預備拍。`);
+};
+const seekEl = $("seek"); let seeking = false;
+seekEl.addEventListener("input", () => { seeking = true; seekTo(seekEl.value / 1000 * (song.duration || 0)); });
+seekEl.addEventListener("change", () => { seeking = false; });
+$("imgFile").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => { origImg = img; ed.img = null; ed.last = null; openEditor(false); };
+  img.onerror = () => say("這張圖片讀不出來，換一張試試。");
+  img.src = URL.createObjectURL(f); e.target.value = "";
+};
+$("editImgBtn").onclick = () => { if (origImg) openEditor(true); };
+function convertImage() {
+  if (!srcImg) return; pause();
+  const mode = $("imgMode").value;
+  contour = mode === "full" && !subjBox && !subjSeeds ? wholeImage(srcImg) // no subject chosen: the whole picture becomes pixels
+    : findContour(srcImg, mode === "full" ? "subject" : mode, 0.5, false, subjBox, subjSeeds);
+  themes.image = themeFromImage(srcImg); if (tab === "image") applyTheme(themes.image);
+  const s = contourToSong(); setSong(s); songs.image = s;
+  if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
+  else say(s.full ? `${contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。`);
+}
+["imgMode","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
+function renderTracks() {
+  const box = $("tracks"); box.innerHTML = "";
+  song.tracks.forEach((t, i) => {
+    const row = document.createElement("label"); row.className = "trk";
+    const cnt = song.notes.filter(n => n.tr === i).length;
+    row.innerHTML = `<input type="checkbox" ${muted.has(i) ? "" : "checked"} aria-label="播放這個音軌"><span class="sw" style="${t.colors && t.colors.length > 1 ? `width:40px;background:linear-gradient(90deg,${t.colors.join(",")})` : `background:${trackColor(i)}`}"></span><span class="n"></span><span style="color:var(--muted);font-size:13px">${cnt} 音</span>`;
+    row.querySelector(".n").textContent = t.name;
+    row.querySelector("input").onchange = ev => { ev.target.checked ? muted.delete(i) : muted.add(i); };
+    box.appendChild(row);
+  });
+}
+/* ---------------- recording ---------------- */
+let recording = null;
+$("recBtn").onclick = async () => {
+  if (recording) { stopRecording(); return; }
+  if (!song.notes.length) { say("目前沒有音符可以錄。先轉一張圖片，或彈一段。"); return; }
+  if (!cv.captureStream || !window.MediaRecorder) { say("這個瀏覽器不支援錄影。請改用電腦版 Chrome、Edge 或 Safari。"); return; }
+  stopLiveRec(); ensureAudio(); pause();
+  try { await actx.resume(); } catch (e) {}
+  offset = 0; lastT = 0; sparks.length = 0; peaks.fill(0); // always rewind to bar 1 before recording
+  const vs = cv.captureStream(30);
+  const tracks = [...vs.getVideoTracks()]; if (mediaDest) tracks.push(...mediaDest.stream.getAudioTracks());
+  const types = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm"];
+  const mime = types.find(t => MediaRecorder.isTypeSupported(t)) || "";
+  const mr = new MediaRecorder(new MediaStream(tracks), mime ? { mimeType: mime, videoBitsPerSecond: 12e6 } : undefined);
+  const chunks = []; mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+  mr.onstop = () => saveVideo(new Blob(chunks, { type: mr.mimeType || mime }), (mr.mimeType || mime).includes("mp4") ? "mp4" : "webm");
+  recording = mr; mr.start(250);
+  $("recBtn").textContent = "停止錄製"; say("錄製中…從第 1 小節開始，播完會自動停止。");
+  play(0.5); // start right away (keeps the tap's audio permission on phones); the first half second holds on bar 1
+};
+function stopRecording() {
+  if (!recording) return; const mr = recording; recording = null;
+  setTimeout(() => mr.state !== "inactive" && mr.stop(), 150);
+  if (playing) pause();
+  $("recBtn").textContent = "錄製整首成影片";
+}
+async function saveVideo(blob, ext) {
+  const name = ($("titleIn").value.trim() || "visual").replace(/[\\/:*?"<>|]/g, "_") + "." + ext;
+  let dl = null; try { dl = window.claude && await window.claude.use("downloads"); } catch (e) {}
+  if (dl) {
+    try { await dl.save({ filename: name, data: blob }); say(`影片已存成 ${name}。`); }
+    catch (e) { say(e && e.code === "declined" ? "已取消存檔。" : "存檔失敗，可以再錄一次試試。"); }
+  } else {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    say(`影片已產生：${name}。`);
+  }
+}
+
+/* ---------------- pixel drawing (270×480, scaled 4×) ---------------- */
+const R = Math.round;
+function fr(x, y, w, h, c) { g.fillStyle = c; g.fillRect(R(x), R(y), R(w), R(h)); }
+function txt(s, x, y, c, size = 8, font = PIX, align = "left") { g.font = `${size}px ${font}`; g.textAlign = align; g.textBaseline = "top"; g.fillStyle = c; g.fillText(s, R(x), R(y)); }
+function alpha(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+const fmt = s => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+const HEART = [".XX.XX.", "XXXXXXX", "XXXXXXX", ".XXXXX.", "..XXX..", "...X..."];
+function heart(x, y, c, s = 1, outline) {
+  for (let r = 0; r < 6; r++) for (let k = 0; k < 7; k++) if (HEART[r][k] === "X") {
+    const edge = outline && (r === 0 || k === 0 || k === 6 || HEART[r - 1]?.[k] !== "X" || HEART[r + 1]?.[k] !== "X" || HEART[r][k - 1] !== "X" || HEART[r][k + 1] !== "X");
+    if (!outline || edge) fr(x + k * s, y + r * s, s, s, c);
+  }
+}
+function win(x, y, w, h, title) {
+  // minimal black panel: hairline frame, pink label, purple corner ticks
+  fr(x, y, w, h, C.line); fr(x + 1, y + 1, w - 2, h - 2, C.navy);
+  txt(title, x + 5, y + 3, C.pink, 8);
+  fr(x + 1, y + 12, w - 2, 1, C.grid);
+  fr(x + w - 7, y + 5, 3, 3, C.violet); fr(x + w - 12, y + 5, 3, 3, C.dim);
+  for (const [cx, cy] of [[x, y], [x + w - 3, y], [x, y + h - 3], [x + w - 3, y + h - 3]]) { fr(cx, cy, 3, 1, C.violet); fr(cx + (cx === x ? 0 : 2), cy + (cy === y ? 0 : -2), 1, 3, C.violet); }
+}
+
+const fft = new Uint8Array(1024), tdL = new Uint8Array(1024), tdR = new Uint8Array(1024);
+const peaks = new Float32Array(16);
+const sparks = [];
+let noteColors = new Map();
+function spawnRipple(p, v, tr, col) { // sparkle burst on every note onset
+  for (let k = 0; k < 5; k++) sparks.push({ p, x: 0, y: 0, vx: (Math.random() - 0.5) * 60, vy: -30 - Math.random() * 50, c: k % 2 ? C.cream : (col || trackColor(tr)), born: performance.now() });
+  if (sparks.length > 200) sparks.splice(0, sparks.length - 200);
+}
+const ripples = sparks; // setSong clears this
+let lastT = 0;
+
+// lavender backdrop with dithered glow + little stars
+const bgc = document.createElement("canvas"); bgc.width = LW; bgc.height = LH;
+const STARS = [];
+const bl1 = document.createElement("canvas"); bl1.width = LW / 3; bl1.height = LH / 3; const bl1x = bl1.getContext("2d");
+const bl2 = document.createElement("canvas"); bl2.width = Math.round(LW / 9); bl2.height = Math.round(LH / 9); const bl2x = bl2.getContext("2d");
+function renderBg() {
+  const b = bgc.getContext("2d");
+  b.fillStyle = C.bg0; b.fillRect(0, 0, LW, LH);
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) {
+    const d = Math.hypot(x - 135, y - 230) / 280, lvl = Math.max(0, 0.75 - d);
+    if (((x + y * 3) % 4 === 0 && lvl > 0.3) || ((x * 7 + y) % 9 === 0 && lvl > 0.5)) { b.fillStyle = C.lav2; b.fillRect(x, y, 1, 1); }
+  }
+}
+{ const r = rng(9); for (let i = 0; i < 26; i++) STARS.push([4 + r() * 262 | 0, 4 + r() * 472 | 0, r()]); }
+renderBg();
+function star(x, y, c, big) { fr(x, y, 1, 1, c); fr(x - 1, y, 1, 1, c); fr(x + 1, y, 1, 1, c); fr(x, y - 1, 1, 1, c); fr(x, y + 1, 1, 1, c); if (big) { fr(x - 2, y, 1, 1, c); fr(x + 2, y, 1, 1, c); fr(x, y - 2, 1, 1, c); fr(x, y + 2, 1, 1, c); } }
+
+let smallImg = null, smallFor = null;
+function small() {
+  if (smallFor === srcImg) return smallImg;
+  smallImg = document.createElement("canvas"); smallImg.width = IMG_IN.w; smallImg.height = IMG_IN.h;
+  const x = smallImg.getContext("2d"); x.imageSmoothingQuality = "high"; x.drawImage(srcImg, 0, 0, IMG_IN.w, IMG_IN.h);
+  smallFor = srcImg; return smallImg;
+}
+
+function draw() {
+  const tRaw = now();
+  // never show time past the end of the song: the last frames (and any recording tail) stay on the final bar instead of rolling into the next one
+  const t = !liveTake && song.duration > 0 ? Math.min(tRaw, song.duration - 1e-3) : tRaw;
+  for (const [, x] of held) if (x.n) x.n.d = Math.max(0.05, t - x.n.t);
+  if (playing && !seeking && song.duration > 0) seekEl.value = Math.min(1000, t / song.duration * 1000);
+  if (t > lastT && t - lastT < 0.5) for (let i = lowerBound(lastT); i < song.notes.length && song.notes[i].t <= t; i++) { const n = song.notes[i]; if (!n.held && (!song.full || Math.random() < 0.12)) spawnRipple(n.p, n.v, n.tr, n.c); }
+  lastT = t;
+  const active = notesIn(t, t + 0.0001), act = new Map();
+  for (const n of active) act.set(n.p, n.tr);
+  const actC = new Map(); for (const n of active) actC.set(n.p, n.c || trackColor(n.tr)); noteColors = actC;
+  for (const [p, x] of liveActive) act.set(p, x.tr);
+  let level = 0;
+  if (actx && anM) {
+    anM.getByteFrequencyData(fft); anL.getByteTimeDomainData(tdL); anR.getByteTimeDomainData(tdR);
+    let s = 0; for (let i = 0; i < 1024; i += 4) { const v = (tdL[i] - 128) / 128; s += v * v; } level = Math.min(1, Math.sqrt(s / 256) * 3.2);
+  } else { fft.fill(0); tdL.fill(128); tdR.fill(128); }
+
+  g.imageSmoothingEnabled = false;
+  g.drawImage(bgc, 0, 0);
+  const tw = performance.now() / 1000;
+  for (const [x, y, ph] of STARS) { const k = (Math.sin(tw * 2 + ph * 9) + 1) / 2; if (k > 0.55) star(x, y, k > 0.9 ? C.blush : C.shadow, k > 0.96); }
+  drawHeader(t);
+  if (tab === "image") drawImageTab(t, active, act); else drawDash(t, act, level);
+  drawFooter(t);
+  G.imageSmoothingEnabled = false; G.globalCompositeOperation = "source-over"; G.globalAlpha = 1; G.drawImage(lc, 0, 0, W, H);
+  // cheap bloom: shrink, then stretch back with smoothing and add on top
+  bl1x.imageSmoothingEnabled = true; bl1x.clearRect(0, 0, bl1.width, bl1.height); bl1x.drawImage(lc, 0, 0, bl1.width, bl1.height);
+  bl1x.fillStyle = "#000";
+  if (tab === "image" && srcImg) bl1x.fillRect(IMG_IN.x / 3 - 1, IMG_IN.y / 3 - 1, IMG_IN.w / 3 + 2, IMG_IN.h / 3 + 2); // keep the photo crisp
+
+  bl2x.imageSmoothingEnabled = true; bl2x.clearRect(0, 0, bl2.width, bl2.height); bl2x.drawImage(bl1, 0, 0, bl2.width, bl2.height);
+  G.imageSmoothingEnabled = true; G.globalCompositeOperation = "lighter";
+  G.globalAlpha = 0.22; G.drawImage(bl1, 0, 0, W, H); G.globalAlpha = 0.3; G.drawImage(bl2, 0, 0, W, H);
+  G.globalAlpha = 1; G.globalCompositeOperation = "source-over";
+  if (tab !== "image") drawSmooth(t, act, level);
+  requestAnimationFrame(draw);
+}
+
+function drawHeader(t) {
+  const title = ($("titleIn").value || "untitled").toLowerCase();
+  g.font = `700 16px ${DISPLAY}`; const w = g.measureText(title).width;
+  g.font = `700 16px ${DISPLAY}`; g.textAlign = "left"; g.textBaseline = "top";
+  g.fillStyle = C.shadow; g.fillText(title, 13, 12); g.fillStyle = C.cream; g.fillText(title, 12, 11);
+  heart(R(12 + w + 5), 15, C.hot);
+  txt(`${song.bpm} BPM`, 258, 11, C.lav, 8, PIX, "right");
+  txt(`${fmt(t)}/${fmt(song.duration || 0)}`, 258, 21, C.hot, 8, PIX, "right");
+}
+
+/* ----- shared piano roll ----- */
+function roll(P, t, whole) {
+  fr(P.x, P.y, P.w, P.h, C.navy2);
+  const rp = song.rowPitches, rmap = rp ? new Map(rp.map((p, i) => [p, i])) : null;
+  const lo = D.lo, hi = D.hi, rows = rp ? rp.length : hi - lo + 1, rh = P.h / rows, rowY = p => P.y + P.h - ((rp ? rmap.get(p) : p - lo) + 1) * rh;
+  for (let p = lo; p <= hi; p++) if (p % 12 === 0 && (!rp || rmap.has(p))) fr(P.x, rowY(p) + rh - 1, P.w, 1, C.grid);
+  if (song.ghost && whole) { g.globalAlpha = 0.3; g.drawImage(song.ghost, P.x, P.y, P.w, P.h); g.globalAlpha = 1; }
+  const winS = whole ? Math.max(song.duration, D.spb) : D.spb * 4, vs = whole ? 0 : t - winS * 0.3;
+  const xt = tt => P.x + (tt - vs) / winS * P.w;
+  for (let b = Math.max(0, Math.floor(vs / D.spb)); b <= Math.ceil((vs + winS) / D.spb); b++) {
+    const lx = xt(b * D.spb); if (lx < P.x || lx > P.x + P.w) continue;
+    for (let y = P.y; y < P.y + P.h; y += 2) fr(lx, y, 1, 1, C.grid);
+  }
+  g.save(); g.beginPath(); g.rect(P.x, P.y, P.w, P.h); g.clip();
+  const nh = Math.max(1, Math.min(Math.floor(rh), 4));
+  for (const n of notesIn(vs, vs + winS)) {
+    const full = song.full, x0 = R(xt(n.t)), x1 = full ? Math.max(x0 + 1, R(xt(n.t + n.d / 0.97)) - (P.w / (song.cols || 1) > 3 ? 1 : 0)) : Math.max(x0 + 1, R(xt(n.t + n.d)) - (whole ? 0 : 1)), y = full ? R(rowY(n.p)) : R(rowY(n.p) + (rh - nh) / 2), hh = full ? Math.max(1, R(rowY(n.p) + rh) - R(rowY(n.p)) - (rh > 3 ? 1 : 0)) : nh, c = n.c || trackColor(n.tr);
+    const on = n.t <= t && n.t + n.d > t, past = n.t + n.d <= t;
+    if (on && song.full) { fr(x0, y, x1 - x0, hh, c); fr(R(xt(t)) - 1, y, 3, hh, C.cream); }
+    else if (on) { fr(x0 - 1, y - 1, x1 - x0 + 2, hh + 2, C.cream); fr(x0, y, x1 - x0, hh, C.hot); }
+    else { g.globalAlpha = past ? 1 : song.full ? 0.5 : 0.38; fr(x0, y, x1 - x0, hh, c); g.globalAlpha = 1; }
+  }
+  g.restore();
+  const px = R(xt(t));
+  if (whole && playing) { const bw = song.cols ? Math.max(2, R(P.w / song.cols)) : 4; g.globalAlpha = 0.18; fr(px - bw, P.y, bw, P.h, C.pink); g.globalAlpha = 1; }
+  if (whole) {
+    const nowMs = performance.now();
+    g.save(); g.beginPath(); g.rect(P.x, P.y, P.w, P.h); g.clip();
+    for (const sp of sparks) {
+      const age = (nowMs - sp.born) / 1000; if (age > 0.7) continue;
+      const yy = rowY(sp.p); if (yy == null || isNaN(yy)) continue;
+      const x = px + sp.vx * age * 0.6, y = yy + rh / 2 + sp.vy * age * 0.5 + 40 * age * age;
+      if (age < 0.35) star(R(x), R(y), sp.c, age < 0.12); else fr(x, y, 1, 1, sp.c);
+    }
+    g.restore();
+  }
+  fr(px, P.y, 1, P.h, C.cream); heart(px - 3, P.y - 7, C.hot);
+}
+
+/* ----- tab 1: picture above, midi below ----- */
+function drawImageTab(t, active, act) {
+  win(12, 36, 246, 164, "source.png");
+  const I = IMG_IN;
+  if (!srcImg || !contour) {
+    fr(I.x, I.y, I.w, I.h, C.navy2);
+    for (let y = I.y; y < I.y + I.h; y += 4) for (let x = I.x + (y / 4 % 2) * 2; x < I.x + I.w; x += 4) fr(x, y, 1, 1, C.grid);
+    heart(I.x + I.w / 2 - 7, I.y + 48, C.pink, 2);
+    txt("upload an image", I.x + I.w / 2, I.y + 72, C.blush, 8, PIX, "center");
+  } else {
+    g.drawImage(small(), I.x, I.y);
+    const prog = song.duration ? Math.min(1, t / song.duration) : 0, sx = R(I.x + prog * I.w);
+    g.drawImage(contour.dark, I.x + 1, I.y + 1, I.w, I.h);
+    g.drawImage(contour.white, I.x, I.y, I.w, I.h);
+    g.save(); g.beginPath(); g.rect(I.x, I.y, sx - I.x, I.h); g.clip(); g.drawImage(contour.canvas, I.x, I.y, I.w, I.h); g.restore();
+    for (let y = I.y; y < I.y + I.h; y += 2) fr(sx - 3, y, 1, 1, alpha(C.cream, 0.6));
+    fr(sx, I.y, 1, I.h, C.cream);
+    const lo = song.range[0], hi = song.range[1], rp = song.rowPitches;
+    if (!song.full) for (const n of active) heart(sx - 3, R(I.y + (1 - (rp ? rp.indexOf(n.p) + 0.5 : n.p - lo + 0.5) / (rp ? rp.length : hi - lo + 1)) * I.h) - 3, trackColor(n.tr) === C.pink ? C.hot : trackColor(n.tr));
+  }
+  win(12, 208, 246, 164, song.full ? (contour && contour.whole ? "image.mid" : "subject.mid") : "outline.mid");
+  roll(ROLL_IN, t, true);
+  // bottom: bar ring + now box
+  const bar = Math.floor(t / D.spb);
+  win(12, 380, 76, 78, "bar");
+  ring(50, 424, 24, t, bar);
+  win(94, 380, 164, 78, "now playing");
+  const ps = [...act.keys()].sort((a, b) => a - b).slice(-4);
+  let nx = 100;
+  if (!ps.length) txt("- - -", nx, 396, C.grid, 16, DISPLAY);
+  for (const p of ps) { const s = nname(p); g.font = `16px ${DISPLAY}`; txt(s, nx, 396, noteColors.get(p) || trackColor(act.get(p)), 16, DISPLAY); nx += g.measureText(s).width + 7; }
+  steps(100, 420, t, bar);
+  scope(100, 434, 152, 18);
+}
+
+function ring(cx, cy, r, t, bar) {
+  const cur = Math.floor((t - bar * D.spb) / D.step);
+  for (let k = 0; k < 16; k++) {
+    const a = k / 16 * Math.PI * 2 - Math.PI / 2, x = R(cx + Math.cos(a) * r), y = R(cy + Math.sin(a) * r);
+    const big = k % 4 === 0, c = k === cur && playing ? C.cream : k < cur && playing ? C.pink : C.grid;
+    fr(x - (big ? 1 : 0), y - (big ? 1 : 0), big ? 3 : 2, big ? 3 : 2, c);
+  }
+  txt(String(bar + 1), cx, cy - 8, C.cream, 16, DISPLAY, "center");
+}
+function steps(x0, y0, t, bar) {
+  const b0 = bar * D.spb, cur = Math.floor((t - b0) / D.step);
+  for (let k = 0; k < 16; k++) {
+    const ts = b0 + k * D.step, ons = notesIn(ts, ts + D.step).filter(n => n.t >= ts - 0.001), x = x0 + k * 9.5;
+    if (ons.length) heart(x, y0, k <= cur ? trackColor(ons[0].tr) : C.grid);
+    else heart(x, y0, k % 4 ? C.grid : C.indigo, 1, true);
+    if (k === cur && playing) fr(x + 1, y0 + 8, 5, 1, C.cream);
+  }
+}
+function scope(x, y, w, h) {
+  let py1 = null, py2 = null;
+  for (let i = 0; i < w; i++) {
+    const v1 = (tdL[Math.floor(i / w * 900)] - 128) / 128, v2 = (tdR[Math.floor(i / w * 900)] - 128) / 128;
+    const y1 = R(y + h / 2 - v1 * h * 0.9), y2 = R(y + h / 2 - v2 * h * 0.6);
+    const a1 = Math.min(y1, py1 ?? y1), b1 = Math.max(y1, py1 ?? y1), a2 = Math.min(y2, py2 ?? y2), b2 = Math.max(y2, py2 ?? y2);
+    fr(x + i, Math.max(y, a2), 1, Math.min(b2, y + h) - Math.max(y, a2) + 1, C.indigo);
+    fr(x + i, Math.max(y, a1), 1, Math.min(b1, y + h) - Math.max(y, a1) + 1, C.pink);
+    py1 = y1; py2 = y2;
+  }
+}
+
+/* ----- tabs 2 & 3: dashboard ----- */
+function drawDash(t, act, level) { // pixel frames only; the content is drawn smooth on the full-res canvas
+  const live = tab === "live";
+  win(12, 36, 112, 112, "cover.png");
+  win(130, 36, 128, 112, live ? "keys.rise" : "keys.fall");
+  win(12, 154, 246, 84, "piano.roll");
+  win(12, 244, 76, 80, "spectrum");
+  win(97, 244, 76, 80, "beat");
+  win(182, 244, 76, 80, "love meter");
+  win(12, 330, 120, 72, "pitch.flower");
+  win(138, 330, 120, 72, "ridge.lines");
+  win(12, 408, 246, 54, "melody · chord");
+}
+/* ---------------- smooth (non-pixel) visuals for the MIDI / live pages, drawn on the full-res canvas ---------------- */
+const Q = G; // full-res context; we scale by 4 so the layout numbers match the pixel panels
+const SC = W / LW;
+function qrr(x, y, w, h, r) { Q.beginPath(); if (Q.roundRect) Q.roundRect(x, y, Math.max(0, w), Math.max(0, h), Math.min(r, w / 2, h / 2)); else Q.rect(x, y, w, h); }
+function glow(c, b) { Q.shadowColor = c; Q.shadowBlur = b * SC; }
+function noGlow() { Q.shadowBlur = 0; }
+function qclip(x, y, w, h) { Q.save(); Q.beginPath(); Q.rect(x, y, w, h); Q.clip(); }
+function qtxt(s, x, y, c, size, font, align = "center", base = "middle") { Q.font = `${size}px ${font}`; Q.textAlign = align; Q.textBaseline = base; Q.fillStyle = c; Q.fillText(s, x, y); }
+function heartPath(cx, cy, s) { // smooth heart, s = half width
+  Q.beginPath(); Q.moveTo(cx, cy + s * 0.9);
+  Q.bezierCurveTo(cx - s * 1.3, cy + s * 0.1, cx - s * 0.9, cy - s * 0.95, cx, cy - s * 0.35);
+  Q.bezierCurveTo(cx + s * 0.9, cy - s * 0.95, cx + s * 1.3, cy + s * 0.1, cx, cy + s * 0.9); Q.closePath();
+}
+let coverHi = null, coverHiFor = null;
+function coverSmooth(x, y, w, h, t, level) {
+  const coverImg = covers[tab];
+  if (!coverImg) { // placeholder
+    Q.strokeStyle = alpha(C.pink, 0.35); Q.lineWidth = 0.4; Q.setLineDash([2, 2]); qrr(x + 6, y + 6, w - 12, h - 12, 4); Q.stroke(); Q.setLineDash([]);
+    heartPath(x + w / 2, y + h / 2 - 8, 7); Q.fillStyle = C.pink; glow(C.pink, 6); Q.fill(); noGlow();
+    qtxt("add a cover", x + w / 2, y + h / 2 + 10, C.blush, 6, PIX); return;
+  }
+  if (coverHiFor !== coverImg) {
+    coverHi = document.createElement("canvas"); coverHi.width = w * SC; coverHi.height = h * SC;
+    const cx = coverHi.getContext("2d"), s2 = Math.max(coverHi.width / coverImg.width, coverHi.height / coverImg.height); cx.imageSmoothingQuality = "high";
+    cx.drawImage(coverImg, (coverHi.width - coverImg.width * s2) / 2, (coverHi.height - coverImg.height * s2) / 2, coverImg.width * s2, coverImg.height * s2);
+    coverHiFor = coverImg;
+  }
+  const beatLen = D.spb / song.beats, ph = playing ? (t % beatLen) / beatLen : 1, k = 1 + (playing ? (1 - ph) ** 4 * 0.025 : 0);
+  qclip(x, y, w, h);
+  Q.imageSmoothingEnabled = true; Q.drawImage(coverHi, x + w / 2 - w * k / 2, y + h / 2 - h * k / 2, w * k, h * k);
+  if (playing && level > 0.55) for (let i = 0; i < 2; i++) { const yy = Math.random() * (h - 3), dx = (Math.random() - 0.5) * 3; Q.drawImage(coverHi, 0, yy * SC, w * SC, 3 * SC, x + dx, y + yy, w, 3); }
+  const sy = y + (t * 14) % h, sg = Q.createLinearGradient(0, sy - 10, 0, sy); sg.addColorStop(0, alpha(C.pink, 0)); sg.addColorStop(1, alpha(C.pink, 0.25));
+  Q.fillStyle = sg; Q.fillRect(x, sy - 10, w, 10);
+  Q.restore();
+}
+function keysSmooth(A, t, act, live) {
+  const kh = A.kh, keyTop = A.y + A.h - kh, lo = D.lo, hi = D.hi, isB = p => [1,3,6,8,10].includes(p % 12);
+  const whites = []; for (let p = lo; p <= hi; p++) if (!isB(p)) whites.push(p);
+  const ww = A.w / whites.length, kx = p => { if (!isB(p)) return { x: A.x + whites.indexOf(p) * ww, w: ww }; const i = whites.indexOf(p - 1); return { x: A.x + (i + 1) * ww - ww * 0.3, w: ww * 0.6 }; };
+  const spd = (keyTop - A.y) / (D.spb * 2);
+  qclip(A.x, A.y, A.w, keyTop - A.y);
+  Q.strokeStyle = alpha(C.grid, 0.9); Q.lineWidth = 0.25;
+  for (let i = 0; i < whites.length; i++) if (whites[i] % 12 === 0) { Q.beginPath(); Q.moveTo(A.x + i * ww, A.y); Q.lineTo(A.x + i * ww, keyTop); Q.stroke(); }
+  const ns = live ? notesIn(t - D.spb * 2, t + 0.001) : notesIn(t, t + D.spb * 2);
+  for (const n of ns) {
+    const k = kx(n.p); let yA, yB;
+    if (live) { yA = keyTop - (t - n.t) * spd; yB = keyTop - (t - Math.min(t, n.t + n.d)) * spd; } else { yB = keyTop - (n.t - t) * spd; yA = keyTop - (n.t + n.d - t) * spd; }
+    const top = Math.min(yA, yB), h = Math.max(1.5, Math.abs(yB - yA)), c = trackColor(n.tr), near = live ? (t - n.t) < 0.3 : (n.t - t) < 0.25;
+    const gr = Q.createLinearGradient(0, top, 0, top + h); gr.addColorStop(0, alpha(c, 0.35)); gr.addColorStop(1, c);
+    if (near) glow(c, 8);
+    Q.fillStyle = gr; qrr(k.x + 0.4, top, k.w - 0.8, h, 1); Q.fill(); noGlow();
+  }
+  const nowMs = performance.now();
+  for (const s of sparks) {
+    const age = (nowMs - s.born) / 1000; if (age > 0.9) continue;
+    const k = kx(Math.max(lo, Math.min(hi, s.p))), x = k.x + k.w / 2 + s.vx * age * 0.5, y = keyTop + s.vy * age * 0.6 + 40 * age * age;
+    Q.fillStyle = alpha(s.c, 1 - age / 0.9); Q.beginPath(); Q.arc(x, y, 0.7 * (1 - age), 0, 7); Q.fill();
+  }
+  Q.restore();
+  glow(C.pink, 6); Q.fillStyle = C.pink; Q.fillRect(A.x, keyTop - 0.5, A.w, 0.5); noGlow();
+  for (const p of whites) { const k = kx(p), on = act.has(p), pc = on ? pressColor(trackColor(act.get(p)), true) : C.cream; if (on) glow(trackColor(act.get(p)), 10); Q.fillStyle = pc; qrr(k.x + 0.25, keyTop + (on ? 0.8 : 0), k.w - 0.5, kh - (on ? 0.8 : 0), 0.8); Q.fill(); noGlow(); }
+  for (let p = lo; p <= hi; p++) if (isB(p) && whites.indexOf(p - 1) >= 0) { const k = kx(p), on = act.has(p); Q.fillStyle = on ? pressColor(trackColor(act.get(p)), false) : C.bg0; if (on) glow(trackColor(act.get(p)), 10); qrr(k.x, keyTop, k.w, kh * 0.6, 0.6); Q.fill(); noGlow(); }
+}
+function rollSmooth(P, t) {
+  const lo = D.lo, hi = D.hi, rows = hi - lo + 1, rh = P.h / rows, rowY = p => P.y + P.h - (p - lo + 1) * rh;
+  const winS = D.spb * 4, vs = t - winS * 0.3, xt = tt => P.x + (tt - vs) / winS * P.w;
+  qclip(P.x, P.y, P.w, P.h);
+  Q.lineWidth = 0.2; Q.strokeStyle = C.grid;
+  for (let p = lo; p <= hi; p++) if (p % 12 === 0) { Q.beginPath(); Q.moveTo(P.x, rowY(p) + rh); Q.lineTo(P.x + P.w, rowY(p) + rh); Q.stroke(); }
+  Q.setLineDash([1, 1.5]);
+  for (let b = Math.max(0, Math.floor(vs / D.spb)); b <= Math.ceil((vs + winS) / D.spb); b++) { const lx = xt(b * D.spb); Q.beginPath(); Q.moveTo(lx, P.y); Q.lineTo(lx, P.y + P.h); Q.stroke(); }
+  Q.setLineDash([]);
+  const nh = Math.max(1, Math.min(rh * 0.75, 3));
+  for (const n of notesIn(vs, vs + winS)) {
+    const x0 = xt(n.t), x1 = xt(n.t + n.d) - 0.4, y = rowY(n.p) + (rh - nh) / 2, c = trackColor(n.tr), on = n.t <= t && n.t + n.d > t, past = n.t + n.d <= t;
+    if (on) { glow(c, 10); Q.fillStyle = c; qrr(x0, y - 0.3, x1 - x0, nh + 0.6, nh / 2); Q.fill(); noGlow(); Q.fillStyle = alpha(C.cream, 0.9); Q.fillRect(x0 + 0.5, y + nh / 2 - 0.2, Math.max(0, x1 - x0 - 1), 0.4); }
+    else { Q.fillStyle = alpha(c, past ? 0.85 : 0.3); qrr(x0, y, x1 - x0, nh, nh / 2); Q.fill(); }
+  }
+  Q.restore();
+  const px = xt(t); glow(C.cream, 8); Q.fillStyle = C.cream; Q.fillRect(px - 0.25, P.y, 0.5, P.h); noGlow();
+  heartPath(px, P.y - 3, 2.6); Q.fillStyle = C.hot; Q.fill();
+}
+const smPeaks = new Float32Array(16);
+function spectrumSmooth(x, y, w, h) {
+  const n = 14, bw = w / n;
+  const gr = Q.createLinearGradient(0, y + h, 0, y); gr.addColorStop(0, C.indigo); gr.addColorStop(0.55, C.violet); gr.addColorStop(0.85, C.pink); gr.addColorStop(1, C.cream);
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(2 * Math.pow(250, i / n)), b = Math.max(a + 1, Math.floor(2 * Math.pow(250, (i + 1) / n)));
+    let m = 0; for (let k = a; k < b; k++) m = Math.max(m, fft[k]);
+    const v = m / 255, bh = v * (h - 4); smPeaks[i] = Math.max(smPeaks[i] - 0.6, bh);
+    Q.fillStyle = gr; qrr(x + i * bw + 0.5, y + h - bh, bw - 1, bh, 1); Q.fill();
+    Q.fillStyle = C.cream; Q.fillRect(x + i * bw + 0.5, y + h - smPeaks[i] - 1.2, bw - 1, 0.5);
+  }
+}
+function ringSmooth(cx, cy, r, t, bar) {
+  const ph = playing ? ((t - bar * D.spb) / D.spb) % 1 : 0;
+  Q.lineCap = "round";
+  Q.strokeStyle = C.grid; Q.lineWidth = 1.6; Q.beginPath(); Q.arc(cx, cy, r, 0, Math.PI * 2); Q.stroke();
+  glow(C.pink, 8); Q.strokeStyle = C.pink; Q.beginPath(); Q.arc(cx, cy, r, -Math.PI / 2, -Math.PI / 2 + ph * Math.PI * 2); Q.stroke(); noGlow();
+  for (let k = 0; k < song.beats; k++) { const a = k / song.beats * Math.PI * 2 - Math.PI / 2, on = playing && Math.floor(ph * song.beats) === k; Q.fillStyle = on ? C.cream : C.dim; Q.beginPath(); Q.arc(cx + Math.cos(a) * (r - 5), cy + Math.sin(a) * (r - 5), on ? 1.4 : 0.9, 0, 7); Q.fill(); }
+  Q.lineCap = "butt";
+  qtxt(String(bar + 1), cx, cy + 1, C.cream, 15, DISPLAY);
+}
+const heartGlow = new Float32Array(12);
+function heartsSmooth(act, ox, oy) {
+  const pcs = new Map(); for (const [p, tr] of act) pcs.set(p % 12, tr);
+  for (let i = 0; i < 12; i++) {
+    heartGlow[i] = pcs.has(i) ? 1 : heartGlow[i] * 0.9;
+    const cx = ox + (i % 4) * 16 + 7, cy = oy + ((i / 4) | 0) * 18 + 4, v = heartGlow[i], c = pcs.has(i) ? trackColor(pcs.get(i)) : C.pink;
+    heartPath(cx, cy, 3.4 + v * 1.4);
+    if (v > 0.05) { glow(c, 10 * v); Q.fillStyle = alpha(c, 0.25 + v * 0.75); Q.fill(); noGlow(); }
+    else { Q.strokeStyle = C.dim; Q.lineWidth = 0.4; Q.stroke(); }
+    qtxt(NOTE_NAMES[i].replace("♯", "#"), cx, cy + 9.5, v > 0.3 ? C.cream : C.dim, 5.5, PIX);
+  }
+}
+const petalsS = new Float32Array(12);
+function flowerSmooth(cx, cy, act) {
+  for (let i = 0; i < 12; i++) petalsS[i] *= 0.94;
+  for (const [p] of act) petalsS[p % 12] = 1;
+  Q.strokeStyle = C.grid; Q.lineWidth = 0.3; Q.beginPath(); Q.arc(cx, cy, 26, 0, 7); Q.stroke();
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2 - Math.PI / 2, len = 5 + petalsS[i] * 21, c = PALETTE[i % PALETTE.length], wdt = 0.22;
+    Q.beginPath(); Q.moveTo(cx, cy);
+    Q.quadraticCurveTo(cx + Math.cos(a - wdt) * len * 0.7, cy + Math.sin(a - wdt) * len * 0.7, cx + Math.cos(a) * len, cy + Math.sin(a) * len);
+    Q.quadraticCurveTo(cx + Math.cos(a + wdt) * len * 0.7, cy + Math.sin(a + wdt) * len * 0.7, cx, cy);
+    const gr = Q.createRadialGradient(cx, cy, 0, cx, cy, len); gr.addColorStop(0, alpha(c, 0.15)); gr.addColorStop(1, alpha(c, 0.3 + petalsS[i] * 0.7));
+    if (petalsS[i] > 0.5) glow(c, 8); Q.fillStyle = gr; Q.fill(); noGlow();
+  }
+  glow(C.hot, 8); heartPath(cx, cy, 3); Q.fillStyle = C.hot; Q.fill(); noGlow();
+}
+// stacked spectrum lines with perspective
+const ridgeHist = []; let ridgeTick = 0;
+function ridges(x, y, w, h) {
+  const bands = 40;
+  if ((playing || liveActive.size) && ridgeTick++ % 3 === 0) {
+    const row = []; for (let i = 0; i < bands; i++) { const a = Math.floor(2 * Math.pow(200, i / bands)), b = Math.max(a + 1, Math.floor(2 * Math.pow(200, (i + 1) / bands))); let m = 0; for (let k = a; k < b; k++) m = Math.max(m, fft[k]); row.push(m / 255); }
+    ridgeHist.unshift(row); if (ridgeHist.length > 16) ridgeHist.pop();
+  }
+  qclip(x, y, w, h);
+  for (let j = ridgeHist.length - 1; j >= 0; j--) {
+    const row = ridgeHist[j], depth = j / 16, inset = depth * w * 0.18, base = y + h - 4 - j * 2.9, amp = 16 * (1 - depth * 0.55);
+    const pts = row.map((v, i) => [x + inset + i / (bands - 1) * (w - inset * 2), base - v * v * amp * (0.4 + 0.6 * Math.sin(Math.PI * i / (bands - 1)))]);
+    Q.beginPath(); Q.moveTo(pts[0][0], base);
+    for (let i = 0; i < pts.length - 1; i++) { const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2; Q.quadraticCurveTo(pts[i][0], pts[i][1], mx, my); }
+    Q.lineTo(pts[pts.length - 1][0], base); Q.closePath();
+    Q.fillStyle = C.navy; Q.fill();
+    const c = j === 0 ? C.cream : j < 5 ? C.pink : C.violet;
+    if (j === 0) glow(C.pink, 8);
+    Q.strokeStyle = alpha(c, 1 - depth * 0.75); Q.lineWidth = j === 0 ? 0.7 : 0.4; Q.stroke(); noGlow();
+  }
+  Q.restore();
+}
+// melody line (top voice) + chord name
+const CHORDS = [["", [0, 4, 7]], ["m", [0, 3, 7]], ["7", [0, 4, 7, 10]], ["maj7", [0, 4, 7, 11]], ["m7", [0, 3, 7, 10]], ["dim", [0, 3, 6]], ["aug", [0, 4, 8]], ["sus4", [0, 5, 7]], ["sus2", [0, 2, 7]]];
+function chordName(ps) {
+  if (!ps.length) return "";
+  const set = new Set(ps.map(p => p % 12)), bass = Math.min(...ps) % 12;
+  if (set.size === 1) return NOTE_NAMES[bass];
+  let best = null, bs = -99;
+  for (let r = 0; r < 12; r++) for (const [suf, tpl] of CHORDS) {
+    const t2 = tpl.map(v => (v + r) % 12), hit = t2.filter(v => set.has(v)).length, miss = t2.length - hit, extra = [...set].filter(v => !t2.includes(v)).length;
+    if (hit < 2) continue;
+    const sc = hit * 2 - miss * 1.6 - extra * 0.7 + (r === bass ? 0.6 : 0) - tpl.length * 0.05;
+    if (sc > bs) { bs = sc; best = NOTE_NAMES[r] + suf; }
+  }
+  return best || NOTE_NAMES[bass];
+}
+let lastChord = "", chordAt = 0;
+function melody(P, t, act) {
+  const ahead = D.spb * 0.5, back = D.spb * 2, x0 = P.x, w = P.w - 64, xt = tt => x0 + (tt - (t - back)) / (back + ahead) * w;
+  const ns = notesIn(t - back - 1, t + ahead), tops = new Map();
+  for (const n of ns) { const k = Math.round(n.t * 100); if (!tops.has(k) || tops.get(k).p < n.p) tops.set(k, n); }
+  const pts = [...tops.values()].sort((a, b) => a.t - b.t).filter(n => n.t >= t - back - 0.5);
+  const yOf = p => P.y + P.h - 3 - (p - D.lo) / Math.max(1, D.hi - D.lo) * (P.h - 6);
+  qclip(x0, P.y, w, P.h);
+  if (pts.length > 1) {
+    const path = () => { Q.beginPath(); Q.moveTo(xt(pts[0].t), yOf(pts[0].p)); for (let i = 1; i < pts.length; i++) { const a = pts[i - 1], b = pts[i], mx = (xt(a.t) + xt(b.t)) / 2; Q.bezierCurveTo(mx, yOf(a.p), mx, yOf(b.p), xt(b.t), yOf(b.p)); } };
+    const px = xt(t);
+    Q.save(); Q.beginPath(); Q.rect(x0, P.y, px - x0, P.h); Q.clip(); path(); glow(C.pink, 8); Q.strokeStyle = C.pink; Q.lineWidth = 0.8; Q.stroke(); noGlow(); Q.restore();
+    Q.save(); Q.beginPath(); Q.rect(px, P.y, x0 + w - px, P.h); Q.clip(); path(); Q.strokeStyle = alpha(C.violet, 0.45); Q.lineWidth = 0.5; Q.setLineDash([1.2, 1.2]); Q.stroke(); Q.setLineDash([]); Q.restore();
+    for (const n of pts) { const on = n.t <= t && n.t + n.d > t; Q.fillStyle = on ? C.cream : n.t <= t ? C.pink : C.dim; if (on) glow(C.cream, 8); Q.beginPath(); Q.arc(xt(n.t), yOf(n.p), on ? 1.4 : 0.8, 0, 7); Q.fill(); noGlow(); }
+    Q.fillStyle = alpha(C.cream, 0.7); Q.fillRect(px - 0.2, P.y, 0.4, P.h);
+  }
+  Q.restore();
+  const name = chordName([...act.keys()]);
+  if (name && name !== lastChord) { lastChord = name; chordAt = performance.now(); }
+  const age = (performance.now() - chordAt) / 1000, cx = P.x + P.w - 30;
+  Q.strokeStyle = C.grid; Q.lineWidth = 0.3; Q.beginPath(); Q.moveTo(P.x + P.w - 60, P.y + 2); Q.lineTo(P.x + P.w - 60, P.y + P.h - 2); Q.stroke();
+  if (lastChord) { glow(C.pink, 10 * Math.max(0, 1 - age)); qtxt(lastChord, cx, P.y + P.h / 2 - 2, name ? C.cream : C.dim, lastChord.length > 4 ? 11 : 15, DISPLAY); noGlow(); }
+  qtxt("chord", cx, P.y + P.h - 4, C.dim, 5.5, PIX);
+}
+function drawSmooth(t, act, level) {
+  const live = tab === "live", bar = Math.floor(t / D.spb);
+  Q.save(); Q.scale(SC, SC); Q.imageSmoothingEnabled = true;
+  coverSmooth(16, 50, 104, 94, t, level);
+  keysSmooth({ x: 132, y: 49, w: 124, h: 97, kh: 14 }, t, act, live);
+  rollSmooth({ x: 16, y: 168, w: 238, h: 66 }, t);
+  spectrumSmooth(17, 259, 66, 61);
+  ringSmooth(135, 290, 22, t, bar);
+  heartsSmooth(act, 190, 262);
+  flowerSmooth(72, 370, act);
+  ridges(140, 344, 116, 56);
+  melody({ x: 16, y: 422, w: 238, h: 36 }, t, act);
+  Q.restore();
+}
+function drawCover(x, y, t, level) {
+  const w = 104, h = 94;
+  if (!coverSmall) {
+    fr(x, y, w, h, C.navy2);
+    for (let yy = y; yy < y + h; yy += 4) for (let xx = x + (yy / 4 % 2) * 2; xx < x + w; xx += 4) fr(xx, yy, 1, 1, C.grid);
+    heart(x + w / 2 - 7, y + 30, C.pink, 2); txt("add a cover", x + w / 2, y + 52, C.blush, 8, PIX, "center"); return;
+  }
+  g.drawImage(coverSmall, x, y);
+  if (playing && level > 0.55) { // glitch: shift a couple of rows on loud moments
+    for (let k = 0; k < 2; k++) { const yy = R(Math.random() * (h - 4)), dx = Math.random() < 0.5 ? -2 : 2; g.drawImage(coverSmall, 0, yy, w, 3, x + dx, y + yy, w, 3); }
+  }
+  const beatLen = D.spb / song.beats, ph = playing ? (t % beatLen) / beatLen : 1;
+  g.globalAlpha = Math.max(0, (1 - ph) ** 3 * 0.16); fr(x, y, w, h, C.cream); g.globalAlpha = 1;
+  const sy = y + R((t * 18) % h); g.globalAlpha = 0.35; fr(x, sy, w, 1, C.pink); g.globalAlpha = 1;
+  for (let yy = y + 1; yy < y + h; yy += 2) { g.globalAlpha = 0.12; fr(x, yy, w, 1, C.bg0); } g.globalAlpha = 1;
+}
+const petals = new Float32Array(12);
+function flower(cx, cy, act) {
+  for (let i = 0; i < 12; i++) petals[i] *= 0.93;
+  for (const [p] of act) petals[p % 12] = 1;
+  for (let i = 0; i < 12; i++) {
+    const a = i / 12 * Math.PI * 2 - Math.PI / 2, len = 4 + petals[i] * 22, col = PALETTE[i % PALETTE.length];
+    for (let r = 6; r < len; r += 1.5) fr(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 1, 1, r > len - 3 ? C.cream : col);
+    fr(cx + Math.cos(a) * 30 - 1, cy + Math.sin(a) * 30 - 1, 2, 2, petals[i] > 0.3 ? col : C.grid);
+  }
+  heart(cx - 3, cy - 3, C.hot);
+}
+const specCv = document.createElement("canvas"); specCv.width = 112; specCv.height = 54; const specX = specCv.getContext("2d");
+const specTmp = document.createElement("canvas"); specTmp.width = 112; specTmp.height = 54; const specTX = specTmp.getContext("2d");
+function specColor(v) {
+  const stops = [C.navy2, C.indigo, C.violet, C.pink, C.cream];
+  return stops[Math.min(stops.length - 1, Math.floor(v * (stops.length - 0.01)))];
+}
+function spectrogram(x, y, w, h) {
+  if (playing || liveActive.size) {
+    specTX.clearRect(0, 0, w, h); specTX.drawImage(specCv, 0, 0); specX.fillStyle = C.navy2; specX.fillRect(0, 0, w, h); specX.drawImage(specTmp, -1, 0);
+    for (let r = 0; r < h; r++) { const bin = Math.floor(2 * Math.pow(220, 1 - r / h)), v = (fft[bin] || 0) / 255; specX.fillStyle = specColor(v * v * 1.2); specX.fillRect(w - 1, r, 1, 1); }
+  }
+  g.drawImage(specCv, x, y);
+}
+function keysFall(A, t, act, live) {
+  const kh = A.kh || 22, bh = Math.round(kh * 0.6), keyTop = A.y + A.h - kh;
+  fr(A.x, A.y, A.w, A.h - kh, C.navy2);
+  const lo = D.lo, hi = D.hi, isB = p => [1,3,6,8,10].includes(p % 12);
+  const whites = []; for (let p = lo; p <= hi; p++) if (!isB(p)) whites.push(p);
+  const ww = A.w / whites.length, kx = p => { if (!isB(p)) return { x: A.x + whites.indexOf(p) * ww, w: ww }; const i = whites.indexOf(p - 1); return { x: A.x + (i + 1) * ww - ww * 0.32, w: ww * 0.64 }; };
+  for (let i = 0; i < whites.length; i++) if (whites[i] % 12 === 0) for (let y = A.y; y < keyTop; y += 3) fr(A.x + i * ww, y, 1, 1, C.grid);
+  const spd = (keyTop - A.y) / (D.spb * 2);
+  g.save(); g.beginPath(); g.rect(A.x, A.y, A.w, keyTop - A.y); g.clip();
+  const ns = live ? notesIn(t - D.spb * 2, t + 0.001) : notesIn(t, t + D.spb * 2);
+  for (const n of ns) {
+    const k = kx(n.p); let yA, yB;
+    if (live) { yA = keyTop - (t - n.t) * spd; yB = keyTop - (t - Math.min(t, n.t + n.d)) * spd; }
+    else { yB = keyTop - (n.t - t) * spd; yA = keyTop - (n.t + n.d - t) * spd; }
+    const top = Math.min(yA, yB), h = Math.max(2, Math.abs(yB - yA)), c = trackColor(n.tr);
+    fr(k.x + 1, top, k.w - 2, h, C.ink); fr(k.x + 2, top + 1, k.w - 4, h - 2, c); fr(k.x + 2, top + 1, 1, h - 2, alpha(C.cream, 0.6));
+  }
+  // sparkles
+  const nowMs = performance.now();
+  for (const s of sparks) {
+    const age = (nowMs - s.born) / 1000; if (age > 0.9) continue;
+    const k = kx(Math.max(lo, Math.min(hi, s.p))); const x = k.x + k.w / 2 + s.vx * age, y = keyTop - 2 + s.vy * age + 60 * age * age;
+    if (age < 0.5) star(R(x), R(y), s.c, age < 0.15); else fr(x, y, 1, 1, s.c);
+  }
+  g.restore();
+  fr(A.x, keyTop - 1, A.w, 1, C.pink);
+  if (live && !song.notes.length && !liveActive.size) { heart(A.x + A.w / 2 - 7, A.y + 22, C.pink, 2); txt("play something", A.x + A.w / 2, A.y + 44, C.blush, 8, PIX, "center"); }
+  // keyboard
+  g.save(); g.beginPath(); g.rect(A.x, keyTop, A.w, kh); g.clip();
+  fr(A.x, keyTop, A.w, kh, C.ink);
+  for (const p of whites) { const k = kx(p), on = act.has(p); fr(k.x + 1, keyTop + 1, k.w - 1, kh - 2, on ? trackColor(act.get(p)) : C.cream); if (!on) fr(k.x + 1, keyTop + kh - 4, k.w - 1, 2, C.blush); }
+  for (let p = lo; p <= hi; p++) if (isB(p) && whites.indexOf(p - 1) >= 0) { const k = kx(p), on = act.has(p); fr(k.x, keyTop, k.w, bh, C.ink); if (on) fr(k.x + 1, keyTop + 1, k.w - 2, bh - 2, trackColor(act.get(p))); else fr(k.x + 1, keyTop + 1, k.w - 2, 2, C.grid); }
+  g.restore();
+}
+function spectrum(x, y, w, h) {
+  const n = 12, bw = Math.floor(w / n);
+  for (let i = 0; i < n; i++) {
+    const a = Math.floor(2 * Math.pow(250, i / n)), b = Math.max(a + 1, Math.floor(2 * Math.pow(250, (i + 1) / n)));
+    let m = 0; for (let k = a; k < b; k++) m = Math.max(m, fft[k]);
+    const blocks = Math.round(m / 255 * 15); peaks[i] = Math.max(peaks[i] - 0.15, blocks);
+    for (let j = 0; j < 15; j++) { const yy = y + h - 4 - j * 4; fr(x + i * bw, yy, bw - 1, 3, j < blocks ? (j > 11 ? C.cream : j > 7 ? C.pink : C.indigo) : "#17122a"); }
+    fr(x + i * bw, y + h - 4 - Math.round(peaks[i]) * 4 - 1, bw - 1, 1, C.cream);
+  }
+}
+function hearts(act, level, ox = 190, oy = 334) {
+  const pcs = new Map(); for (const [p, tr] of act) pcs.set(p % 12, tr);
+  const pulse = 1 + (level > 0.5 ? 1 : 0);
+  for (let i = 0; i < 12; i++) {
+    const c = i % 4, r = (i / 4) | 0, x = ox + c * 16, y = oy + r * 18;
+    if (pcs.has(i)) { heart(x, y, trackColor(pcs.get(i)), 2); if (pulse > 1) fr(x + 2, y + 2, 2, 2, C.cream); }
+    else heart(x + 3, y + 3, C.grid, 1, true);
+    txt(NOTE_NAMES[i].replace("♯", "#"), x + 7, y + 12, pcs.has(i) ? C.cream : C.dim, 8, PIX, "center");
+  }
+}
+function score(t, cx = 217, y = 419) {
+  const idx = lowerBound(t + 1e-6), sc = Math.floor(D.score[idx] || 0), combo = idx > 0 ? D.combo[idx - 1] : 0;
+  txt(String(sc).padStart(7, "0").slice(-7), cx, y, C.cream, 16, DISPLAY, "center");
+  txt(`x${combo} combo`, cx, y + 20, C.pink, 8, PIX, "center");
+}
+
+function drawFooter(t) {
+  const prog = song.duration ? Math.min(1, t / song.duration) : 0, x = 12, y = 468, w = 246;
+  fr(x, y, w, 5, C.ink); fr(x + 1, y + 1, w - 2, 3, C.navy2);
+  const env = D.env; for (let i = 0; i < w - 2; i++) { const v = env[Math.floor(i / (w - 2) * env.length)] || 0; if (i / (w - 2) <= prog) fr(x + 1 + i, y + 1, 1, 3, v > 0.5 ? C.hot : C.pink); }
+  heart(R(x + prog * (w - 7)), y - 6, C.hot);
+}
+
+/* ---------------- start ---------------- */
+buildKb();
+setSong(emptySong("OUTLINE"));
+const fontsReady = document.fonts ? Promise.all([document.fonts.load(`700 16px "Pixelify Sans"`), document.fonts.load(`16px "Pixelify Sans"`), document.fonts.load(`8px Silkscreen`)]).catch(() => {}) : Promise.resolve();
+fontsReady.finally(() => requestAnimationFrame(draw));
+})();
+</script>
+</body>
+</html>

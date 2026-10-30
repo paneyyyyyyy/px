@@ -26,7 +26,7 @@ canvas#view{display:block;width:min(100%,calc((100vh - 36px)*9/16));height:auto;
 .side{display:flex;flex-direction:column;gap:12px}
 section{background:var(--card);border:1px solid var(--line);padding:12px 14px 14px}
 section>h2{margin:0 0 10px;font-size:14px;font-weight:400;color:var(--pink);letter-spacing:.04em}
-.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border:1px solid var(--line)}
+.tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:0;border:1px solid var(--line)}
 .tabs button{justify-content:center;padding:10px 4px;background:transparent;border:0;box-shadow:none;color:var(--muted)}
 .tabs button[aria-selected="true"]{background:var(--pink);color:#000000}
 .pane[hidden]{display:none}
@@ -69,10 +69,9 @@ input[type=checkbox]{accent-color:var(--pink)}
 <body>
 <div class="app">
   <div class="side">
-    <div class="brand">pixel<span>♥</span>beat<small>把圖片輪廓、MIDI 或即時彈奏變成音樂影片</small></div>
+    <div class="brand">pixel<span>♥</span>beat<small>把圖片輪廓或即時彈奏變成音樂影片</small></div>
     <div class="tabs" role="tablist">
       <button role="tab" id="t-image" aria-selected="true" data-tab="image">圖片轉 MIDI</button>
-      <button role="tab" id="t-midi" aria-selected="false" data-tab="midi">匯入 MIDI</button>
       <button role="tab" id="t-live" aria-selected="false" data-tab="live">即時彈奏</button>
     </div>
 
@@ -84,7 +83,6 @@ input[type=checkbox]{accent-color:var(--pink)}
       </div>
       <p class="hint">上傳後會先開編輯畫面：① 裁切 ② 框出主體 ③ 用筆刷補上漏掉、擦掉多抓的地方。「完整主體」會把整個主體用原圖顏色畫成音符。</p>
       <label class="f">轉換方式<select id="imgMode"><option value="full" selected>完整主體（用原圖顏色）</option><option value="subject">只要外框</option><option value="edges">圖中所有線條</option></select></label>
-      <label class="f">細節<input type="range" id="imgDetail" min="0" max="1" step="0.05" value="0.5"></label>
       <label class="f">像素格數<select id="imgPix"><option value="32">32 格寬（最簡單）</option><option value="48">48 格寬</option><option value="64" selected>64 格寬</option><option value="80">80 格寬</option><option value="96">96 格寬</option><option value="128">128 格寬（最細）</option></select></label>
       <label class="f">長度<select id="imgBars"><option value="4">4 小節</option><option value="8" selected>8 小節</option><option value="16">16 小節</option></select></label>
       <label class="f">音域<select id="imgOct"><option value="3">3 個八度</option><option value="4" selected>4 個八度</option><option value="5">5 個八度</option></select></label>
@@ -96,17 +94,6 @@ input[type=checkbox]{accent-color:var(--pink)}
         <option value="minPent">小調五聲音階</option>
       </select></label>
       <label class="f">速度 BPM<input type="number" id="imgBpm" value="100" min="40" max="240"></label>
-    </section>
-
-    <section class="pane" id="p-midi" role="tabpanel" aria-labelledby="t-midi" hidden>
-      <h2>匯入 MIDI</h2>
-      <div class="row">
-        <label class="filebtn primary">選擇 MIDI 檔<input type="file" id="midiFile" accept=".mid,.midi,audio/midi,audio/x-midi"></label>
-        <button id="demoBtn">載入示範曲</button>
-      </div>
-      <label class="f">長度（小節）<input type="number" id="midiBars" value="8" min="1" max="999" step="1"></label>
-      <label class="f">速度 BPM<input type="number" id="midiBpm" value="96" min="40" max="240" step="1"></label>
-      <p class="hint">匯入後會自動帶入檔案原本的長度和速度，可以再自己改。超過長度的音會被切掉；改速度會整首一起變快或變慢。每個音軌（或頻道）會自動分配顏色和音色。</p>
     </section>
 
     <section class="pane" id="p-live" role="tabpanel" aria-labelledby="t-live" hidden>
@@ -200,7 +187,7 @@ const DEFAULT_PAL0 = PALETTE.slice();
 const C = { lav:"#d6d6d6", lav2:"#101010", shadow:"#2a2a2a", ink:"#000000", navy:"#050505", navy2:"#050505", grid:"#1d1d1d", pink:"#ffffff", hot:"#ffffff", blush:"#cfcfcf", cream:"#ffffff", indigo:"#7d7d7d", violet:"#b5b5b5", orange:"#ffffff", line:"#2a2a2a", dim:"#575757", bg0:"#000000" };
 const DEFAULT_C = { ...C }, DEFAULT_PAL = [];
 let tab = "image";
-const songs = { image: null, midi: null, live: null };
+const songs = { image: null, live: null };
 const DISPLAY = '"Pixelify Sans", "Silkscreen", monospace';
 const PIX = 'Silkscreen, "Pixelify Sans", monospace';
 const NOTE_NAMES = ["C","C♯","D","D♯","E","F","F♯","G","G♯","A","A♯","B"];
@@ -248,82 +235,6 @@ function notesIn(t0, t1) {
 const trackColor = tr => song.fromImage ? ((song.tracks[tr] && song.tracks[tr].color) || PALETTE[tr % PALETTE.length]) : PALETTE[tr % PALETTE.length];
 
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
-function demoSong() {
-  const bpm = 96, beats = 4, q = 60 / bpm, notes = [], r = rng(11);
-  const chords = [[57,60,64],[53,57,60],[60,64,67],[55,59,62]];
-  const pent = [69,72,74,76,79,81,84,86];
-  let li = 3;
-  for (let bar = 0; bar < 8; bar++) {
-    const ch = chords[bar % 4], b0 = bar * beats * q, pat = [0,1,2,1,0,2,1,2];
-    for (let k = 0; k < 8; k++) notes.push({ t: b0 + k * q / 2, d: q * 0.48, p: ch[pat[k]] + (k === 5 ? 12 : 0), v: 0.5 + 0.2 * (k % 2 === 0), tr: 0 });
-    notes.push({ t: b0, d: q * 1.9, p: ch[0] - 12, v: 0.75, tr: 2 }, { t: b0 + 2 * q, d: q * 1.9, p: ch[0] - 12 + (bar % 2 ? 7 : 0), v: 0.65, tr: 2 });
-    if (bar >= 1) { let x = 0; while (x < 8) { const len = r() < 0.6 ? 1 : 2; if (r() > 0.18) { li = Math.max(0, Math.min(pent.length - 1, li + Math.round((r() - 0.5) * 3))); notes.push({ t: b0 + x * q / 2, d: len * q / 2 * 0.9, p: pent[li], v: 0.6 + r() * 0.35, tr: 1 }); } x += len; } }
-  }
-  return { notes, bpm, beats, tracks: [{ name: "PIANO", color: PALETTE[0] }, { name: "LEAD", color: PALETTE[1] }, { name: "BASS", color: PALETTE[2] }], fromImage: false };
-}
-/* ---------------- MIDI parsing ---------------- */
-function parseMidi(buf) {
-  const d = new DataView(buf); let p = 0;
-  const str = n => { let s = ""; for (let i = 0; i < n; i++) s += String.fromCharCode(d.getUint8(p + i)); p += n; return s; };
-  const u32 = () => { const v = d.getUint32(p); p += 4; return v; };
-  const u16 = () => { const v = d.getUint16(p); p += 2; return v; };
-  const vlq = () => { let v = 0, b; do { b = d.getUint8(p++); v = (v << 7) | (b & 127); } while (b & 128); return v; };
-  if (str(4) !== "MThd") throw new Error("這不是標準 MIDI 檔");
-  const hl = u32(); u16(); const ntr = u16(), div = u16(); p = 8 + hl;
-  if (div & 0x8000) throw new Error("暫不支援 SMPTE 時間格式的 MIDI");
-  const tempos = [], raw = []; let ts = null;
-  for (let t = 0; t < ntr && p < d.byteLength - 8; t++) {
-    const id = str(4), len = u32(), end = Math.min(p + len, d.byteLength);
-    if (id !== "MTrk") { p = end; t--; continue; }
-    let tick = 0, rs = 0, name = "";
-    const open = {}, byCh = {};
-    while (p < end) {
-      tick += vlq();
-      let st = d.getUint8(p);
-      if (st & 0x80) p++; else st = rs;
-      if (st === 0xFF) {
-        const type = d.getUint8(p++), l = vlq();
-        if (type === 0x51) tempos.push({ tick, us: (d.getUint8(p) << 16) | (d.getUint8(p + 1) << 8) | d.getUint8(p + 2) });
-        else if (type === 0x58 && !ts) ts = [d.getUint8(p), 2 ** d.getUint8(p + 1)];
-        else if (type === 0x03 && !name) { for (let i = 0; i < l; i++) name += String.fromCharCode(d.getUint8(p + i)); }
-        p += l;
-      } else if (st === 0xF0 || st === 0xF7) { p += vlq(); }
-      else {
-        rs = st;
-        const hi = st & 0xF0, ch = st & 15, a = d.getUint8(p++);
-        let b = 0; if (hi !== 0xC0 && hi !== 0xD0) b = d.getUint8(p++);
-        if (hi === 0x90 && b > 0) (open[ch * 128 + a] ||= []).push({ tick, v: b });
-        else if (hi === 0x80 || (hi === 0x90 && b === 0)) {
-          const arr = open[ch * 128 + a];
-          if (arr && arr.length) { const o = arr.shift(); (byCh[ch] ||= []).push({ s: o.tick, e: tick, p: a, v: o.v / 127 }); }
-        }
-      }
-    }
-    for (const k in open) for (const o of open[k]) (byCh[Math.floor(k / 128)] ||= []).push({ s: o.tick, e: tick, p: k % 128, v: o.v / 127 });
-    const chs = Object.keys(byCh);
-    for (const ch of chs) raw.push({ name: (name.trim() || ("TRACK " + (raw.length + 1))) + (chs.length > 1 ? " ch" + (+ch + 1) : ""), notes: byCh[ch], drum: +ch === 9 });
-    p = end;
-  }
-  tempos.sort((a, b) => a.tick - b.tick);
-  if (!tempos.length || tempos[0].tick > 0) tempos.unshift({ tick: 0, us: 500000 });
-  const segs = []; let sec = 0;
-  for (let i = 0; i < tempos.length; i++) {
-    if (i > 0) sec += (tempos[i].tick - tempos[i - 1].tick) / div * tempos[i - 1].us / 1e6;
-    segs.push({ tick: tempos[i].tick, sec, us: tempos[i].us });
-  }
-  const t2s = tick => { let s = segs[0]; for (const x of segs) { if (x.tick <= tick) s = x; else break; } return s.sec + (tick - s.tick) / div * s.us / 1e6; };
-  const tracks = [], notes = [];
-  for (const r of raw) {
-    if (!r.notes.length) continue;
-    const tr = tracks.length;
-    tracks.push({ name: r.name.toUpperCase().slice(0, 18), color: PALETTE[tr % PALETTE.length], drum: r.drum });
-    for (const x of r.notes) { const t = t2s(x.s); notes.push({ t, d: Math.max(0.05, t2s(x.e) - t), p: x.p, v: x.v, tr }); }
-  }
-  if (!notes.length) throw new Error("這個 MIDI 檔裡沒有音符");
-  const bpm = Math.round(60e6 / (tempos.find(x => x.tick === 0) || tempos[0]).us);
-  return { notes, bpm, beats: ts ? ts[0] : 4, tracks, fromImage: false };
-}
-
 /* ---------------- image contour → MIDI ---------------- */
 const SCALES = { majPent:[0,2,4,7,9], minPent:[0,3,5,7,10], major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], chrom:[0,1,2,3,4,5,6,7,8,9,10,11] };
 let srcImg = null, contour = null; // contour: {canvas, aw, ah}
@@ -774,7 +685,7 @@ const hasSeeds = () => ed.seeds && ed.seeds.some(v => v);
 const seedPack = () => hasSeeds() ? { data: ed.seeds.slice(), w: SG_W, h: SG_H } : null;
 function edPreview() {
   if (!ed.subj && !hasSeeds()) { ed.prevCv = null; edDraw(); return; }
-  const pr = findContour(makeCrop(SG_W * 3), "subject", +$("imgDetail").value, false, boxNorm(), seedPack());
+  const pr = findContour(makeCrop(SG_W * 3), "subject", 0.5, false, boxNorm(), seedPack());
   const { aw, ah, mask, edge } = pr, c = document.createElement("canvas"); c.width = aw; c.height = ah;
   const x = c.getContext("2d"), im = x.createImageData(aw, ah);
   for (let i = 0; i < aw * ah; i++) {
@@ -876,7 +787,7 @@ $("edOk").onclick = () => {
 edEl.addEventListener("keydown", e => { if (e.key === "Escape") edEl.hidden = true; });
 
 /* ---------------- cover image + colour theme ---------------- */
-const covers = { midi: null, live: null }, themes = { image: null, midi: null, live: null };
+const covers = { live: null }, themes = { image: null, live: null };
 let coverSmall = null;
 const hexOf = (r, g2, b) => "#" + [r, g2, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, "0")).join("");
 function hsl(h, s2, l) { // h 0..360
@@ -934,9 +845,8 @@ const emptySong = (name, bpm = 100, length) => ({ notes: [], bpm, beats: 4, leng
 function switchTab(name) {
   if (name === tab) return;
   stopLiveRec(); pause(); songs[tab] = song; tab = name;
-  for (const t of ["image", "midi", "live"]) { $("t-" + t).setAttribute("aria-selected", t === name); $("p-" + t).hidden = t !== name; }
-  if (name === "midi" && !songs.midi) loadMidiSong(demoSong());
-  else setSong(songs[name] || (name === "live" ? emptySong("LIVE") : emptySong("OUTLINE")));
+  for (const t of ["image", "live"]) { $("t-" + t).setAttribute("aria-selected", t === name); $("p-" + t).hidden = t !== name; }
+  setSong(songs[name] || (name === "live" ? emptySong("LIVE") : emptySong("OUTLINE")));
   $("coverSec").hidden = name === "image";
   if (name !== "image") $("coverClear").disabled = !covers[name];
   applyTheme(themes[name]);
@@ -951,16 +861,13 @@ $("coverClear").onclick = () => { setCover(null); say("已移除封面，這一�
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
 $("playBtn").onclick = () => { if (liveTake) { stopLiveRec(); return; } playing ? pause() : play(); };
 $("restartBtn").onclick = () => { stopLiveRec(); seekTo(0); if (!playing) play(); };
-$("demoBtn").onclick = () => { pause(); loadMidiSong(demoSong()); say("已載入示範曲。"); };
 $("clearBtn").onclick = () => { stopLiveRec(); pause(); song.notes = []; setSong(song); songs.live = song; say("已清空。按「錄音」重新錄。"); };
 $("liveRecBtn").onclick = () => liveTake ? stopLiveRec() : startLiveRec();
 
 /* ---------------- length / tempo settings ---------------- */
 const RANGES = {
   imgBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
-  midiBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
   liveBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
-  midiBars: { min: 1, max: 999, def: 8, name: "長度", unit: " 小節" },
   liveBars: { min: 1, max: 64, def: 8, name: "長度", unit: " 小節" },
 };
 for (const id in RANGES) { const e = document.createElement("div"); e.className = "err"; e.id = id + "Err"; e.setAttribute("role", "alert"); $(id).closest("label").after(e); }
@@ -975,23 +882,6 @@ function checkRange(id, quiet) { // out of range → snap to the nearest limit a
 }
 for (const id in RANGES) $(id).addEventListener("change", () => checkRange(id));
 const clearErr = id => { $(id + "Err").textContent = ""; };
-
-// MIDI: keep the file as imported, rebuild the song whenever length / tempo change
-let midiBase = null;
-function loadMidiSong(s) {
-  midiBase = s; let dur = 0; for (const x of s.notes) dur = Math.max(dur, x.t + x.d);
-  $("midiBpm").value = s.bpm; $("midiBars").value = Math.max(1, Math.ceil((dur - 30 / s.bpm) / (s.beats * 60 / s.bpm)));
-  clearErr("midiBpm"); clearErr("midiBars");
-  applyMidiSettings();
-}
-function applyMidiSettings() {
-  if (!midiBase) return;
-  const bpm = checkRange("midiBpm", true), bars = checkRange("midiBars", true), r = midiBase.bpm / bpm, len = bars * midiBase.beats * 60 / bpm;
-  const notes = [];
-  for (const x of midiBase.notes) { const t = x.t * r; if (t < len) notes.push({ ...x, t, d: Math.max(0.05, Math.min(x.d * r, len - t)) }); }
-  pause(); setSong({ ...midiBase, notes, bpm, length: len }); songs.midi = song;
-}
-["midiBpm", "midiBars"].forEach(id => $(id).addEventListener("change", applyMidiSettings));
 
 // live: nothing can be played until length + tempo are confirmed
 ["liveBpm", "liveBars"].forEach(id => $(id).addEventListener("input", () => { if (liveReady) { stopLiveRec(); liveReady = false; updateLiveUI(); } }));
@@ -1008,12 +898,6 @@ $("liveSetBtn").onclick = () => {
 const seekEl = $("seek"); let seeking = false;
 seekEl.addEventListener("input", () => { seeking = true; seekTo(seekEl.value / 1000 * (song.duration || 0)); });
 seekEl.addEventListener("change", () => { seeking = false; });
-$("midiFile").onchange = async e => {
-  const f = e.target.files[0]; if (!f) return;
-  try { pause(); const s = parseMidi(await f.arrayBuffer()); loadMidiSong(s); say(`已匯入「${f.name}」：${s.tracks.length} 個音軌、${s.notes.length} 個音、${s.bpm} BPM、${$("midiBars").value} 小節。可以在上面改長度和速度。`); }
-  catch (err) { say("匯入失敗：" + err.message); }
-  e.target.value = "";
-};
 $("imgFile").onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const img = new Image();
@@ -1026,13 +910,13 @@ function convertImage() {
   if (!srcImg) return; pause();
   const mode = $("imgMode").value;
   contour = mode === "full" && !subjBox && !subjSeeds ? wholeImage(srcImg) // no subject chosen: the whole picture becomes pixels
-    : findContour(srcImg, mode === "full" ? "subject" : mode, +$("imgDetail").value, false, subjBox, subjSeeds);
+    : findContour(srcImg, mode === "full" ? "subject" : mode, 0.5, false, subjBox, subjSeeds);
   themes.image = themeFromImage(srcImg); if (tab === "image") applyTheme(themes.image);
   const s = contourToSong(); setSong(s); songs.image = s;
   if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
-  else say(s.full ? `${contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。形狀太碎就把細節調低，太粗就調高。`);
+  else say(s.full ? `${contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。`);
 }
-["imgMode","imgDetail","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
+["imgMode","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
 function renderTracks() {
   const box = $("tracks"); box.innerHTML = "";
   song.tracks.forEach((t, i) => {
@@ -1048,7 +932,7 @@ function renderTracks() {
 let recording = null;
 $("recBtn").onclick = async () => {
   if (recording) { stopRecording(); return; }
-  if (!song.notes.length) { say("目前沒有音符可以錄。先匯入 MIDI、轉一張圖片，或彈一段。"); return; }
+  if (!song.notes.length) { say("目前沒有音符可以錄。先轉一張圖片，或彈一段。"); return; }
   if (!cv.captureStream || !window.MediaRecorder) { say("這個瀏覽器不支援錄影。請改用電腦版 Chrome、Edge 或 Safari。"); return; }
   stopLiveRec(); ensureAudio(); pause();
   try { await actx.resume(); } catch (e) {}

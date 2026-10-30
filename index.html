@@ -53,6 +53,9 @@ input[type=checkbox]{accent-color:var(--pink)}
 .kb .b{height:54px;background:#050409;z-index:2}
 .kb .on{background:var(--press,#8a8a8a)!important;box-shadow:inset 0 -6px 0 rgba(0,0,0,.35)}
 .seek{margin-top:12px}
+.err{font-size:13px;color:#ff7a7a;margin:6px 0 0 102px}
+.err:empty{display:none}
+.kb.locked{opacity:.35}
 .ed{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:calc(env(safe-area-inset-top,0px) + 12px) 12px calc(env(safe-area-inset-bottom,0px) + 12px)}
 .ed[hidden]{display:none}
 .edbox{background:var(--card);border:1px solid var(--line);padding:14px;max-width:760px;width:100%;max-height:100%;overflow:auto}
@@ -79,10 +82,9 @@ input[type=checkbox]{accent-color:var(--pink)}
         <label class="filebtn primary">上傳圖片<input type="file" id="imgFile" accept="image/*"></label>
         <button id="editImgBtn" disabled>重新裁切／選主體</button>
       </div>
-      <p class="hint">上傳後會先開編輯畫面：① 裁切 ② 框出主體 ③ 用筆刷補上漏掉、擦掉多抓的地方。「完整主體」會把整個主體用原圖顏色畫成音符；「同時最多」只對外框和線條模式有效。</p>
+      <p class="hint">上傳後會先開編輯畫面：① 裁切 ② 框出主體 ③ 用筆刷補上漏掉、擦掉多抓的地方。「完整主體」會把整個主體用原圖顏色畫成音符。</p>
       <label class="f">轉換方式<select id="imgMode"><option value="full" selected>完整主體（用原圖顏色）</option><option value="subject">只要外框</option><option value="edges">圖中所有線條</option></select></label>
       <label class="f">細節<input type="range" id="imgDetail" min="0" max="1" step="0.05" value="0.5"></label>
-      <label class="f">主體判斷<select id="imgInvert"><option value="0">自動</option><option value="1">反過來</option></select></label>
       <label class="f">像素格數<select id="imgPix"><option value="32">32 格寬（最簡單）</option><option value="48">48 格寬</option><option value="64" selected>64 格寬</option><option value="80">80 格寬</option><option value="96">96 格寬</option><option value="128">128 格寬（最細）</option></select></label>
       <label class="f">長度<select id="imgBars"><option value="4">4 小節</option><option value="8" selected>8 小節</option><option value="16">16 小節</option></select></label>
       <label class="f">音域<select id="imgOct"><option value="3">3 個八度</option><option value="4" selected>4 個八度</option><option value="5">5 個八度</option></select></label>
@@ -93,7 +95,6 @@ input[type=checkbox]{accent-color:var(--pink)}
         <option value="majPent" selected>大調五聲音階（最好聽）</option>
         <option value="minPent">小調五聲音階</option>
       </select></label>
-      <label class="f">同時最多<select id="imgMax"><option>4</option><option>8</option><option selected>12</option><option value="48">不限（輪廓最完整）</option></select></label>
       <label class="f">速度 BPM<input type="number" id="imgBpm" value="100" min="40" max="240"></label>
     </section>
 
@@ -103,17 +104,26 @@ input[type=checkbox]{accent-color:var(--pink)}
         <label class="filebtn primary">選擇 MIDI 檔<input type="file" id="midiFile" accept=".mid,.midi,audio/midi,audio/x-midi"></label>
         <button id="demoBtn">載入示範曲</button>
       </div>
-      <p class="hint">每個音軌（或頻道）會自動分配顏色和音色。</p>
+      <label class="f">長度（小節）<input type="number" id="midiBars" value="8" min="1" max="999" step="1"></label>
+      <label class="f">速度 BPM<input type="number" id="midiBpm" value="96" min="40" max="240" step="1"></label>
+      <p class="hint">匯入後會自動帶入檔案原本的長度和速度，可以再自己改。超過長度的音會被切掉；改速度會整首一起變快或變慢。每個音軌（或頻道）會自動分配顏色和音色。</p>
     </section>
 
     <section class="pane" id="p-live" role="tabpanel" aria-labelledby="t-live" hidden>
       <h2>即時彈奏</h2>
-      <div class="row">
-        <button id="midiConnectBtn">連接 MIDI 鍵盤</button>
-        <label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="recChk" checked> 邊彈邊錄</label>
-        <button id="clearBtn">清空重錄</button>
+      <label class="f">長度（小節）<input type="number" id="liveBars" value="8" min="1" max="64" step="1"></label>
+      <label class="f">速度 BPM<input type="number" id="liveBpm" value="100" min="40" max="240" step="1"></label>
+      <div class="row" style="margin-top:12px"><button class="primary" id="liveSetBtn">設定完成</button></div>
+      <div class="row" style="margin-top:12px">
+        <button id="liveRecBtn" disabled>● 錄音</button>
+        <label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="metroChk" checked> 節拍器</label>
       </div>
-      <div class="kb" id="kb" aria-label="螢幕鍵盤"></div>
+      <div class="row" style="margin-top:8px">
+        <button id="midiConnectBtn">連接 MIDI 鍵盤</button>
+        <button id="clearBtn">清空</button>
+      </div>
+      <div class="kb locked" id="kb" aria-label="螢幕鍵盤"></div>
+      <p class="hint">先設好長度和速度，按「設定完成」才能開始彈。按「錄音」會先響一小節預備拍，再從第 1 小節開始錄，錄到設定的長度會自動停；重錄會蓋掉上一次。節拍器只有你聽得到，輸出的影片裡不會有它的聲音。</p>
       <p class="hint">電腦鍵盤 A W S E D F T G Y H U J K 也能彈，Z / X 換八度。</p>
     </section>
 
@@ -448,7 +458,7 @@ function findContour(img, mode, detail, invert, box, seeds) {
 
 function contourToSong() {
   const bars = +$("imgBars").value, bpm = Math.max(40, Math.min(240, +$("imgBpm").value || 100));
-  const scale = SCALES[$("imgScale").value], oct = +$("imgOct").value, maxPer = +$("imgMax").value;
+  const scale = SCALES[$("imgScale").value], oct = +$("imgOct").value, maxPer = 12;
   const low = 60 - oct * 6, high = low + oct * 12;
   const pitches = []; for (let p = low; p <= high; p++) if (scale.includes(p % 12)) pitches.push(p);
   const steps = bars * 16, rows = pitches.length, { edge, aw, ah } = contour;
@@ -585,7 +595,7 @@ const muted = new Set();
 const now = () => playing ? Math.max(0, actx.currentTime - startCtx + offset) : offset;
 function play(lead = 0.06) {
   ensureAudio();
-  if (!liveRec() && offset >= song.duration - 0.01) offset = 0;
+  if (!liveTake && offset >= song.duration - 0.01) offset = 0;
   startCtx = actx.currentTime + lead; playing = true;
   schedIdx = lowerBound(offset); scheduledUntil = offset;
   $("playBtn").textContent = "暫停";
@@ -603,12 +613,55 @@ setInterval(() => {
     voiceStart(x.p, x.v, Math.max(when, actx.currentTime), x.tr).release(Math.max(when, actx.currentTime) + x.d);
   }
   scheduledUntil = until;
-  if (!liveRec() && t > song.duration + 0.6) { pause(); offset = song.duration; if (recording) stopRecording(); }
+  if (liveTake) {
+    const T = liveTake;
+    while (T.k < T.endBeat && T.start + T.k * T.spb < actx.currentTime + 0.15) {
+      const k = T.k, when = T.start + k * T.spb;
+      if (k < 0 || metroChk.checked) metroClick(when, ((k % T.beats) + T.beats) % T.beats === 0);
+      if (k <= 0) setTimeout(() => { if (liveTake === T) say(k < 0 ? `預備拍 ${T.beats + k + 1} / ${T.beats}` : "錄音中…"); }, Math.max(0, (when - actx.currentTime) * 1000));
+      T.k++;
+    }
+    if (t >= T.len) stopLiveRec();
+    return;
+  }
+  if (t > song.duration + 0.6) { pause(); offset = song.duration; if (recording) stopRecording(); }
 }, 25);
 
 /* ---------------- live input ---------------- */
-const recChk = $("recChk");
-const liveRec = () => tab === "live" && recChk.checked;
+const metroChk = $("metroChk");
+let liveTake = null, liveReady = false;
+// metronome goes straight to the speakers, never into master → it stays out of the analysers and the exported video
+function metroClick(when, accent) {
+  const o = actx.createOscillator(), gn = actx.createGain();
+  o.type = "square"; o.frequency.value = accent ? 1760 : 1175;
+  gn.gain.setValueAtTime(0, when); gn.gain.linearRampToValueAtTime(accent ? 0.22 : 0.13, when + 0.002); gn.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+  o.connect(gn); gn.connect(actx.destination); o.start(when); o.stop(when + 0.08);
+}
+function updateLiveUI() {
+  $("liveSetBtn").disabled = liveReady; $("liveSetBtn").textContent = liveReady ? "✓ 已設定" : "設定完成";
+  $("liveRecBtn").disabled = !liveReady; $("liveRecBtn").textContent = liveTake ? "■ 停止錄音" : "● 錄音";
+  kb.classList.toggle("locked", !liveReady);
+}
+function startLiveRec() {
+  if (!liveReady) { say("先設定長度和速度，按「設定完成」後才能錄音。"); return; }
+  if (recording) stopRecording();
+  ensureAudio(); pause();
+  song.notes = []; prepare(); renderTracks();
+  offset = 0; lastT = 0; sparks.length = 0;
+  const spb = 60 / song.bpm, beats = song.beats || 4;
+  play(spb * beats + 0.12); // one bar of count-in: the clock holds at 0:00 until bar 1
+  liveTake = { start: startCtx, spb, beats, k: -beats, endBeat: Math.round(song.length / spb), len: song.length };
+  updateLiveUI(); say("預備…");
+}
+function stopLiveRec() {
+  if (!liveTake) return;
+  const T = liveTake, end = Math.min(now(), T.len); liveTake = null;
+  for (const x of held.values()) if (x.n) { x.n.d = Math.max(0.05, end - x.n.t); delete x.n.held; x.n = null; }
+  song.notes = song.notes.filter(n => n.t < T.len);
+  for (const n of song.notes) n.d = Math.min(n.d, T.len - n.t);
+  pause(); offset = 0; seekEl.value = 0; prepare(); renderTracks(); updateLiveUI();
+  say(`錄好了，共 ${song.notes.length} 個音。按「播放」聽聽看，或再按「錄音」重錄。`);
+}
 const held = new Map(), liveActive = new Map();
 function liveTrack() {
   let i = song.tracks.findIndex(t => t.name === "LIVE");
@@ -616,14 +669,14 @@ function liveTrack() {
   return i;
 }
 function noteOn(p, v) {
+  if (tab === "live" && !liveReady) { say("先設定長度和速度，按「設定完成」後才能開始彈。"); return; }
   ensureAudio();
   if (held.has(p)) noteOff(p);
   let tr = 0, n = null;
-  if (liveRec()) {
-    tr = liveTrack();
-    if (!playing) play();
-    n = { t: now(), d: 0.05, p, v, tr, held: true };
-    song.notes.push(n); prepare();
+  if (tab === "live") tr = liveTrack();
+  if (liveTake) {
+    const raw = actx.currentTime - startCtx + offset;
+    if (raw > -0.2 && raw < liveTake.len) { n = { t: Math.max(0, raw), d: 0.05, p, v, tr, held: true }; song.notes.push(n); prepare(); }
   }
   const h = voiceStart(p, v, actx.currentTime, tr);
   held.set(p, { h, n }); liveActive.set(p, { v, tr, at: performance.now() }); spawnRipple(p, v, tr);
@@ -632,7 +685,7 @@ function noteOn(p, v) {
 function noteOff(p) {
   const x = held.get(p); if (!x) return;
   x.h.release(actx.currentTime);
-  if (x.n) { x.n.d = Math.max(0.05, now() - x.n.t); delete x.n.held; prepare(); }
+  if (x.n) { x.n.d = Math.max(0.05, Math.min(now(), liveTake ? liveTake.len : Infinity) - x.n.t); delete x.n.held; prepare(); }
   held.delete(p); liveActive.delete(p); kbMark(p, false);
 }
 $("midiConnectBtn").onclick = async () => {
@@ -721,7 +774,7 @@ const hasSeeds = () => ed.seeds && ed.seeds.some(v => v);
 const seedPack = () => hasSeeds() ? { data: ed.seeds.slice(), w: SG_W, h: SG_H } : null;
 function edPreview() {
   if (!ed.subj && !hasSeeds()) { ed.prevCv = null; edDraw(); return; }
-  const pr = findContour(makeCrop(SG_W * 3), "subject", +$("imgDetail").value, $("imgInvert").value === "1", boxNorm(), seedPack());
+  const pr = findContour(makeCrop(SG_W * 3), "subject", +$("imgDetail").value, false, boxNorm(), seedPack());
   const { aw, ah, mask, edge } = pr, c = document.createElement("canvas"); c.width = aw; c.height = ah;
   const x = c.getContext("2d"), im = x.createImageData(aw, ah);
   for (let i = 0; i < aw * ah; i++) {
@@ -877,12 +930,13 @@ function setCover(img) { // each page keeps its own cover and its own colours
   applyTheme(themes[tab]); $("coverClear").disabled = !img;
 }
 /* ---------------- UI wiring ---------------- */
-const emptySong = name => ({ notes: [], bpm: 100, beats: 4, tracks: [{ name, color: PALETTE[0] }], fromImage: false, range: name === "LIVE" ? [48, 84] : undefined });
+const emptySong = (name, bpm = 100, length) => ({ notes: [], bpm, beats: 4, length, tracks: [{ name, color: PALETTE[0] }], fromImage: false, range: name === "LIVE" ? [48, 84] : undefined });
 function switchTab(name) {
   if (name === tab) return;
-  pause(); songs[tab] = song; tab = name;
+  stopLiveRec(); pause(); songs[tab] = song; tab = name;
   for (const t of ["image", "midi", "live"]) { $("t-" + t).setAttribute("aria-selected", t === name); $("p-" + t).hidden = t !== name; }
-  setSong(songs[name] || (name === "midi" ? demoSong() : name === "live" ? emptySong("LIVE") : emptySong("OUTLINE")));
+  if (name === "midi" && !songs.midi) loadMidiSong(demoSong());
+  else setSong(songs[name] || (name === "live" ? emptySong("LIVE") : emptySong("OUTLINE")));
   $("coverSec").hidden = name === "image";
   if (name !== "image") $("coverClear").disabled = !covers[name];
   applyTheme(themes[name]);
@@ -895,16 +949,68 @@ $("coverFile").onchange = e => {
 };
 $("coverClear").onclick = () => { setCover(null); say("已移除封面，這一頁的配色回到黑白。"); };
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
-$("playBtn").onclick = () => playing ? pause() : play();
-$("restartBtn").onclick = () => { seekTo(0); if (!playing) play(); };
-$("demoBtn").onclick = () => { pause(); setSong(demoSong()); songs.midi = song; say("已載入示範曲。"); };
-$("clearBtn").onclick = () => { pause(); setSong(emptySong("LIVE")); songs.live = song; recChk.checked = true; say("已清空。彈第一個音就會開始錄。"); };
+$("playBtn").onclick = () => { if (liveTake) { stopLiveRec(); return; } playing ? pause() : play(); };
+$("restartBtn").onclick = () => { stopLiveRec(); seekTo(0); if (!playing) play(); };
+$("demoBtn").onclick = () => { pause(); loadMidiSong(demoSong()); say("已載入示範曲。"); };
+$("clearBtn").onclick = () => { stopLiveRec(); pause(); song.notes = []; setSong(song); songs.live = song; say("已清空。按「錄音」重新錄。"); };
+$("liveRecBtn").onclick = () => liveTake ? stopLiveRec() : startLiveRec();
+
+/* ---------------- length / tempo settings ---------------- */
+const RANGES = {
+  imgBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
+  midiBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
+  liveBpm: { min: 40, max: 240, def: 100, name: "速度", unit: " BPM" },
+  midiBars: { min: 1, max: 999, def: 8, name: "長度", unit: " 小節" },
+  liveBars: { min: 1, max: 64, def: 8, name: "長度", unit: " 小節" },
+};
+for (const id in RANGES) { const e = document.createElement("div"); e.className = "err"; e.id = id + "Err"; e.setAttribute("role", "alert"); $(id).closest("label").after(e); }
+function checkRange(id, quiet) { // out of range → snap to the nearest limit and say so under the field
+  const r = RANGES[id], el = $(id), err = $(id + "Err"), raw = el.value.trim(), v = Math.round(+raw);
+  let out = v, msg = "";
+  if (raw === "" || !isFinite(+raw)) { out = r.def; msg = `${r.name}要填數字，已改回 ${r.def}${r.unit}。`; }
+  else if (v < r.min) { out = r.min; msg = `${r.name}最低是 ${r.min}${r.unit}，已自動改成 ${r.min}。`; }
+  else if (v > r.max) { out = r.max; msg = `${r.name}最高是 ${r.max}${r.unit}，已自動改成 ${r.max}。`; }
+  el.value = out; if (msg || !quiet) err.textContent = msg;
+  return out;
+}
+for (const id in RANGES) $(id).addEventListener("change", () => checkRange(id));
+const clearErr = id => { $(id + "Err").textContent = ""; };
+
+// MIDI: keep the file as imported, rebuild the song whenever length / tempo change
+let midiBase = null;
+function loadMidiSong(s) {
+  midiBase = s; let dur = 0; for (const x of s.notes) dur = Math.max(dur, x.t + x.d);
+  $("midiBpm").value = s.bpm; $("midiBars").value = Math.max(1, Math.ceil((dur - 30 / s.bpm) / (s.beats * 60 / s.bpm)));
+  clearErr("midiBpm"); clearErr("midiBars");
+  applyMidiSettings();
+}
+function applyMidiSettings() {
+  if (!midiBase) return;
+  const bpm = checkRange("midiBpm", true), bars = checkRange("midiBars", true), r = midiBase.bpm / bpm, len = bars * midiBase.beats * 60 / bpm;
+  const notes = [];
+  for (const x of midiBase.notes) { const t = x.t * r; if (t < len) notes.push({ ...x, t, d: Math.max(0.05, Math.min(x.d * r, len - t)) }); }
+  pause(); setSong({ ...midiBase, notes, bpm, length: len }); songs.midi = song;
+}
+["midiBpm", "midiBars"].forEach(id => $(id).addEventListener("change", applyMidiSettings));
+
+// live: nothing can be played until length + tempo are confirmed
+["liveBpm", "liveBars"].forEach(id => $(id).addEventListener("input", () => { if (liveReady) { stopLiveRec(); liveReady = false; updateLiveUI(); } }));
+$("liveSetBtn").onclick = () => {
+  const bars = checkRange("liveBars"), bpm = checkRange("liveBpm");
+  stopLiveRec(); pause();
+  const s = songs.live && tab !== "live" ? songs.live : song, old = s.bpm;
+  if (s.notes.length && old !== bpm) for (const n of s.notes) { n.t *= old / bpm; n.d *= old / bpm; } // keep what was played on the same beats
+  s.bpm = bpm; s.length = bars * s.beats * 60 / bpm;
+  s.notes = s.notes.filter(n => n.t < s.length); for (const n of s.notes) n.d = Math.min(n.d, s.length - n.t);
+  setSong(s); songs.live = s; liveReady = true; updateLiveUI();
+  say(`設定完成：${bars} 小節、${bpm} BPM。可以開始彈了，按「錄音」會先數一小節預備拍。`);
+};
 const seekEl = $("seek"); let seeking = false;
 seekEl.addEventListener("input", () => { seeking = true; seekTo(seekEl.value / 1000 * (song.duration || 0)); });
 seekEl.addEventListener("change", () => { seeking = false; });
 $("midiFile").onchange = async e => {
   const f = e.target.files[0]; if (!f) return;
-  try { pause(); const s = parseMidi(await f.arrayBuffer()); setSong(s); songs.midi = s; say(`已匯入「${f.name}」：${s.tracks.length} 個音軌、${s.notes.length} 個音、${s.bpm} BPM。`); }
+  try { pause(); const s = parseMidi(await f.arrayBuffer()); loadMidiSong(s); say(`已匯入「${f.name}」：${s.tracks.length} 個音軌、${s.notes.length} 個音、${s.bpm} BPM、${$("midiBars").value} 小節。可以在上面改長度和速度。`); }
   catch (err) { say("匯入失敗：" + err.message); }
   e.target.value = "";
 };
@@ -920,13 +1026,13 @@ function convertImage() {
   if (!srcImg) return; pause();
   const mode = $("imgMode").value;
   contour = mode === "full" && !subjBox && !subjSeeds ? wholeImage(srcImg) // no subject chosen: the whole picture becomes pixels
-    : findContour(srcImg, mode === "full" ? "subject" : mode, +$("imgDetail").value, $("imgInvert").value === "1", subjBox, subjSeeds);
+    : findContour(srcImg, mode === "full" ? "subject" : mode, +$("imgDetail").value, false, subjBox, subjSeeds);
   themes.image = themeFromImage(srcImg); if (tab === "image") applyTheme(themes.image);
   const s = contourToSong(); setSong(s); songs.image = s;
-  if (!contour.count) say("沒抓到輪廓。試著重新框主體、把「主體判斷」改成反過來，或換成「圖中所有線條」。");
+  if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
   else say(s.full ? `${contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。形狀太碎就把細節調低，太粗就調高。`);
 }
-["imgMode","imgDetail","imgInvert","imgBars","imgOct","imgScale","imgMax","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
+["imgMode","imgDetail","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
 function renderTracks() {
   const box = $("tracks"); box.innerHTML = "";
   song.tracks.forEach((t, i) => {
@@ -944,7 +1050,7 @@ $("recBtn").onclick = async () => {
   if (recording) { stopRecording(); return; }
   if (!song.notes.length) { say("目前沒有音符可以錄。先匯入 MIDI、轉一張圖片，或彈一段。"); return; }
   if (!cv.captureStream || !window.MediaRecorder) { say("這個瀏覽器不支援錄影。請改用電腦版 Chrome、Edge 或 Safari。"); return; }
-  ensureAudio(); pause(); recChk.checked = false;
+  stopLiveRec(); ensureAudio(); pause();
   try { await actx.resume(); } catch (e) {}
   offset = 0; lastT = 0; sparks.length = 0; peaks.fill(0); // always rewind to bar 1 before recording
   const vs = cv.captureStream(30);

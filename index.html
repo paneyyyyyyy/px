@@ -206,7 +206,10 @@ function prepare() {
     if (!n.length) { lo = 48; hi = 84; }
     lo = Math.max(0, lo - 2); hi = Math.min(127, Math.max(hi + 2, lo + 24));
   }
-  song.duration = Math.max(dur, song.length || 0);
+  // the song always ends exactly on a bar line: the set length if there is one, otherwise the last note rounded to a whole bar
+  // (a note that only spills a hair past the bar line no longer adds a whole extra bar)
+  const barLen = 60 / song.bpm * song.beats;
+  song.duration = song.length ? song.length : dur > 0 ? Math.max(1, Math.ceil(dur / barLen - 0.1)) * barLen : 0;
   const BINS = 480, env = new Float32Array(BINS);
   if (dur > 0) {
     for (const x of n) {
@@ -535,7 +538,7 @@ setInterval(() => {
     if (t >= T.len) stopLiveRec();
     return;
   }
-  if (t > song.duration + 0.6) { pause(); offset = song.duration; if (recording) stopRecording(); }
+  if (t > song.duration + (recording ? 0.25 : 0.6)) { pause(); offset = song.duration; if (recording) stopRecording(); } // short tail so the last notes ring out
 }, 25);
 
 /* ---------------- live input ---------------- */
@@ -950,7 +953,7 @@ $("recBtn").onclick = async () => {
 };
 function stopRecording() {
   if (!recording) return; const mr = recording; recording = null;
-  setTimeout(() => mr.state !== "inactive" && mr.stop(), 400);
+  setTimeout(() => mr.state !== "inactive" && mr.stop(), 150);
   if (playing) pause();
   $("recBtn").textContent = "錄製整首成影片";
 }
@@ -1025,7 +1028,9 @@ function small() {
 }
 
 function draw() {
-  const t = now();
+  const tRaw = now();
+  // never show time past the end of the song: the last frames (and any recording tail) stay on the final bar instead of rolling into the next one
+  const t = !liveTake && song.duration > 0 ? Math.min(tRaw, song.duration - 1e-3) : tRaw;
   for (const [, x] of held) if (x.n) x.n.d = Math.max(0.05, t - x.n.t);
   if (playing && !seeking && song.duration > 0) seekEl.value = Math.min(1000, t / song.duration * 1000);
   if (t > lastT && t - lastT < 0.5) for (let i = lowerBound(lastT); i < song.notes.length && song.notes[i].t <= t; i++) { const n = song.notes[i]; if (!n.held && (!song.full || Math.random() < 0.12)) spawnRipple(n.p, n.v, n.tr, n.c); }

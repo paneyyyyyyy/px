@@ -93,6 +93,7 @@ input[type=checkbox]{accent-color:var(--pink)}
       <p class="hint">「自己畫」：從左畫到右就是時間，越上面音越高，畫的顏色就是音符的顏色。</p>
       <label class="f">轉換方式<select id="imgMode"><option value="full" selected>完整主體（用原圖顏色）</option><option value="subject">只要外框</option><option value="edges">圖中所有線條</option></select></label>
       <label class="f">像素格數<select id="imgPix"><option value="32">32 格寬（最簡單）</option><option value="48">48 格寬</option><option value="64" selected>64 格寬</option><option value="80">80 格寬</option><option value="96">96 格寬</option><option value="128">128 格寬（最細）</option></select></label>
+      <label class="f">拍號<select id="imgSig"><option value="2/4">2/4</option><option value="3/4">3/4</option><option value="4/4" selected>4/4</option><option value="5/4">5/4</option><option value="6/8">6/8</option><option value="7/8">7/8</option><option value="9/8">9/8</option><option value="12/8">12/8</option></select></label>
       <label class="f">長度<select id="imgBars"><option value="4">4 小節</option><option value="8" selected>8 小節</option><option value="16">16 小節</option></select></label>
       <label class="f">音域<select id="imgOct"><option value="3">3 個八度</option><option value="4" selected>4 個八度</option><option value="5">5 個八度</option></select></label>
       <label class="f">音階<select id="imgScale">
@@ -107,6 +108,7 @@ input[type=checkbox]{accent-color:var(--pink)}
 
     <section class="pane" id="p-live" role="tabpanel" aria-labelledby="t-live" hidden>
       <h2>即時彈奏</h2>
+      <label class="f">拍號<select id="liveSig"><option value="2/4">2/4</option><option value="3/4">3/4</option><option value="4/4" selected>4/4</option><option value="5/4">5/4</option><option value="6/8">6/8</option><option value="7/8">7/8</option><option value="9/8">9/8</option><option value="12/8">12/8</option></select></label>
       <label class="f">長度（小節）<input type="number" id="liveBars" value="8" min="1" max="64" step="1"></label>
       <label class="f">速度 BPM<input type="number" id="liveBpm" value="100" min="40" max="240" step="1"></label>
       <div class="row" style="margin-top:12px"><button class="primary" id="liveSetBtn">設定完成</button></div>
@@ -119,7 +121,7 @@ input[type=checkbox]{accent-color:var(--pink)}
         <button id="clearBtn">清空</button>
       </div>
       <div class="kb locked" id="kb" aria-label="螢幕鍵盤"></div>
-      <p class="hint">先設好長度和速度，按「設定完成」才能開始彈。按「錄音」會先響一小節預備拍，再從第 1 小節開始錄，錄到設定的長度會自動停；重錄會蓋掉上一次。節拍器只有你聽得到，輸出的影片裡不會有它的聲音。</p>
+      <p class="hint">先設好拍號、長度和速度，按「設定完成」才能開始彈。BPM 是每分鐘幾下節拍器（6/8 就是每分鐘幾個八分音符），每小節第一拍的聲音最高。按「錄音」會先響一小節預備拍，再從第 1 小節開始錄，錄到設定的長度會自動停；重錄會蓋掉上一次。節拍器只有你聽得到，輸出的影片裡不會有它的聲音。</p>
       <p class="hint">電腦鍵盤 A W S E D F T G Y H U J K 也能彈，Z / X 換八度。</p>
     </section>
 
@@ -244,7 +246,7 @@ function prepare() {
     let m = 0; for (const v of env) m = Math.max(m, v);
     if (m > 0) for (let k = 0; k < BINS; k++) env[k] /= m;
   }
-  D = { lo, hi, maxD, env, spb: 60 / song.bpm * song.beats, step: 60 / song.bpm / 4 };
+  D = { lo, hi, maxD, env, spb: 60 / song.bpm * song.beats, step: 60 / song.bpm / subPerBeat(song.unit || 4) };
   const score = new Float64Array(n.length + 1), combo = new Int32Array(n.length);
   for (let i = 0; i < n.length; i++) { score[i + 1] = score[i] + Math.round(n[i].v * 977); combo[i] = i > 0 && n[i].t - n[i - 1].t < 1.5 ? combo[i - 1] + 1 : 1; }
   D.score = score; D.combo = combo;
@@ -264,6 +266,11 @@ const trackColor = tr => song.fromImage ? ((song.tracks[tr] && song.tracks[tr].c
 
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 /* ---------------- image contour → MIDI ---------------- */
+// time signature: top = clicks per bar, bottom = what one click is. BPM always counts those clicks.
+const parseSig = v => { const [b, u] = String(v || "4/4").split("/").map(Number); return { beats: b || 4, unit: u || 4 }; };
+const subPerBeat = unit => unit === 8 ? 2 : 4; // grid cells per click: 16ths for x/4, 16ths for x/8 too
+// which clicks get an accent: 2 = downbeat, 1 = start of a 3-group in 6/8, 9/8, 12/8, 0 = plain
+const accentOf = (k, beats, unit) => { const i = ((k % beats) + beats) % beats; return i === 0 ? 2 : unit === 8 && beats % 3 === 0 && beats > 3 && i % 3 === 0 ? 1 : 0; };
 const SCALES = { majPent:[0,2,4,7,9], minPent:[0,3,5,7,10], major:[0,2,4,5,7,9,11], minor:[0,2,3,5,7,8,10], chrom:[0,1,2,3,4,5,6,7,8,9,10,11] };
 let srcImg = null, contour = null; // contour: {canvas, aw, ah}
 
@@ -396,18 +403,18 @@ function findContour(img, mode, detail, invert, box, seeds) {
 }
 
 function contourToSong() {
-  const bars = +$("imgBars").value, bpm = Math.max(40, Math.min(240, +$("imgBpm").value || 100));
+  const bars = +$("imgBars").value, bpm = Math.max(40, Math.min(240, +$("imgBpm").value || 100)), { beats, unit } = parseSig($("imgSig").value), sub = subPerBeat(unit);
   const scale = SCALES[$("imgScale").value], oct = +$("imgOct").value, maxPer = 12;
   const low = 60 - oct * 6, high = low + oct * 12;
   const pitches = []; for (let p = low; p <= high; p++) if (scale.includes(p % 12)) pitches.push(p);
-  const steps = bars * 16, rows = pitches.length, { edge, aw, ah } = contour;
-  if ($("imgMode").value === "full" && contour.mask) return fullSubjectSong(bars, bpm, scale);
+  const steps = bars * beats * sub, rows = pitches.length, { edge, aw, ah } = contour;
+  if ($("imgMode").value === "full" && contour.mask) return fullSubjectSong(bars, bpm, scale, beats, unit);
   const occ = new Uint16Array(steps * rows);
   for (let i = 0; i < edge.length; i++) if (edge[i]) {
     const c = Math.min(steps - 1, Math.floor((i % aw) / aw * steps)), r = Math.min(rows - 1, Math.floor(((i / aw) | 0) / ah * rows));
     occ[c * rows + r]++;
   }
-  const step = 60 / bpm / 4, notes = []; let prev = new Map();
+  const step = 60 / bpm / sub, notes = []; let prev = new Map();
   for (let c = 0; c < steps; c++) {
     const on = []; for (let r = 0; r < rows; r++) if (occ[c * rows + r]) on.push(r);
     let pick = on;
@@ -421,7 +428,7 @@ function contourToSong() {
     prev = next;
   }
   for (const n of notes) n.d = Math.max(step * 0.6, n.d - step * 0.1);
-  return { notes, bpm, beats: 4, range: [low, high], length: steps * step, tracks: [{ name: "OUTLINE", color: PALETTE[0] }, { name: "DETAIL", color: PALETTE[2] }], fromImage: true };
+  return { notes, bpm, beats, unit, range: [low, high], length: steps * step, tracks: [{ name: "OUTLINE", color: PALETTE[0] }, { name: "DETAIL", color: PALETTE[2] }], fromImage: true };
 }
 function wholeImage(img) {
   const aw = IMG_IN.w, ah = Math.round(img.height / img.width * aw), N = aw * ah;
@@ -431,7 +438,7 @@ function wholeImage(img) {
   return { edge: new Uint8Array(N), aw, ah, px, mask: new Uint8Array(N).fill(1), canvas: empty(), white: empty(), dark: empty(), count: N, whole: true };
 }
 // simplified like pixel art: a coarse grid, every pixel keeps the picture's own colour, each pixel = one note
-function fullSubjectSong(bars, bpm, scale) {
+function fullSubjectSong(bars, bpm, scale, beats = 4, unit = 4) {
   const { mask, px, aw, ah } = contour;
   const cols = +$("imgPix").value, rows = Math.max(6, Math.round(cols / CROP_A));
   let scaleNote = "", all = [];
@@ -439,7 +446,7 @@ function fullSubjectSong(bars, bpm, scale) {
   if (all.length < rows) { all = []; for (let p = 0; p <= 127; p++) all.push(p); scaleNote = "格數太多，選的音階不夠用，這次自動改用半音。"; }
   let i0 = all.findIndex(p => p >= 60) - Math.floor(rows / 2); i0 = Math.max(0, Math.min(all.length - rows, i0));
   const pitches = all.slice(i0, i0 + rows);
-  const total = bars * 4 * 60 / bpm, colDur = total / cols;
+  const total = bars * beats * 60 / bpm, colDur = total / cols;
   const grid = new Array(cols * rows).fill(null);
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const x0 = Math.floor(c / cols * aw), x1 = Math.max(x0 + 1, Math.floor((c + 1) / cols * aw)), y0 = Math.floor(r / rows * ah), y1 = Math.max(y0 + 1, Math.floor((r + 1) / rows * ah));
@@ -471,7 +478,7 @@ function fullSubjectSong(bars, bpm, scale) {
   const names = ["LIGHT", "MID", "DARK"], used = [0, 1, 2].filter(i => acc[i][3]), remap = new Map(used.map((i, j) => [i, j]));
   for (const n of notes) n.tr = remap.get(n.tr);
   const tracks = used.map(i => { const sm = samples[i].slice().sort((a, b) => lum(b) - lum(a) || b[0] - a[0]), pick = []; for (let j = 0; j < 8 && sm.length; j++) pick.push(hex(sm[Math.floor(j / 8 * sm.length)])); return { name: names[i] + " 亮度", color: hex(acc[i].slice(0, 3).map(v => v / acc[i][3])), colors: pick }; });
-  return { notes, tracks: tracks.length ? tracks : [{ name: "PIXELS", color: PALETTE[0] }], bpm, beats: 4, range: [pitches[0], pitches[rows - 1]], rowPitches: pitches, length: total, fromImage: true, full: true, ghost, cols, scaleNote, gainScale: Math.min(1, 2.2 / Math.sqrt(Math.max(1, ...perCol))) };
+  return { notes, tracks: tracks.length ? tracks : [{ name: "PIXELS", color: PALETTE[0] }], bpm, beats, unit, range: [pitches[0], pitches[rows - 1]], rowPitches: pitches, length: total, fromImage: true, full: true, ghost, cols, scaleNote, gainScale: Math.min(1, 2.2 / Math.sqrt(Math.max(1, ...perCol))) };
 }
 /* ---------------- audio ---------------- */
 let actx = null, master, comp, anL, anR, anM, mediaDest;
@@ -556,7 +563,7 @@ setInterval(() => {
     const T = liveTake;
     while (T.k < T.endBeat && T.start + T.k * T.spb < actx.currentTime + 0.15) {
       const k = T.k, when = T.start + k * T.spb;
-      if (k < 0 || metroChk.checked) metroClick(when, ((k % T.beats) + T.beats) % T.beats === 0);
+      if (k < 0 || metroChk.checked) metroClick(when, accentOf(k, T.beats, T.unit));
       if (k <= 0) setTimeout(() => { if (liveTake === T) say(k < 0 ? `預備拍 ${T.beats + k + 1} / ${T.beats}` : "錄音中…"); }, Math.max(0, (when - actx.currentTime) * 1000));
       T.k++;
     }
@@ -570,10 +577,10 @@ setInterval(() => {
 const metroChk = $("metroChk");
 let liveTake = null, liveReady = false;
 // metronome goes straight to the speakers, never into master → it stays out of the analysers and the exported video
-function metroClick(when, accent) {
+function metroClick(when, accent) { // accent: 2 downbeat, 1 group start, 0 plain
   const o = actx.createOscillator(), gn = actx.createGain();
-  o.type = "square"; o.frequency.value = accent ? 1760 : 1175;
-  gn.gain.setValueAtTime(0, when); gn.gain.linearRampToValueAtTime(accent ? 0.22 : 0.13, when + 0.002); gn.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
+  o.type = "square"; o.frequency.value = [1175, 1440, 1760][accent | 0];
+  gn.gain.setValueAtTime(0, when); gn.gain.linearRampToValueAtTime([0.13, 0.17, 0.22][accent | 0], when + 0.002); gn.gain.exponentialRampToValueAtTime(0.0001, when + 0.06);
   o.connect(gn); gn.connect(actx.destination); o.start(when); o.stop(when + 0.08);
 }
 function updateLiveUI() {
@@ -589,7 +596,7 @@ function startLiveRec() {
   offset = 0; lastT = 0; sparks.length = 0;
   const spb = 60 / song.bpm, beats = song.beats || 4;
   play(spb * beats + 0.12); // one bar of count-in: the clock holds at 0:00 until bar 1
-  liveTake = { start: startCtx, spb, beats, k: -beats, endBeat: Math.round(song.length / spb), len: song.length };
+  liveTake = { start: startCtx, spb, beats, unit: song.unit || 4, k: -beats, endBeat: Math.round(song.length / spb), len: song.length };
   updateLiveUI(); say("預備…");
 }
 function stopLiveRec() {
@@ -1010,7 +1017,7 @@ function setCover(img) { // each page keeps its own cover and its own colours
   applyTheme(themes[tab]); $("coverClear").disabled = !img;
 }
 /* ---------------- UI wiring ---------------- */
-const emptySong = (name, bpm = 100, length) => ({ notes: [], bpm, beats: 4, length, tracks: [{ name, color: PALETTE[0] }], fromImage: false, range: name === "LIVE" ? [48, 84] : undefined });
+const emptySong = (name, bpm = 100, length) => ({ notes: [], bpm, beats: 4, unit: 4, length, tracks: [{ name, color: PALETTE[0] }], fromImage: false, range: name === "LIVE" ? [48, 84] : undefined });
 function switchTab(name) {
   if (name === tab) return;
   stopLiveRec(); pause(); songs[tab] = song; tab = name;
@@ -1053,16 +1060,17 @@ for (const id in RANGES) $(id).addEventListener("change", () => checkRange(id));
 const clearErr = id => { $(id + "Err").textContent = ""; };
 
 // live: nothing can be played until length + tempo are confirmed
-["liveBpm", "liveBars"].forEach(id => $(id).addEventListener("input", () => { if (liveReady) { stopLiveRec(); liveReady = false; updateLiveUI(); } }));
+["liveBpm", "liveBars", "liveSig"].forEach(id => $(id).addEventListener(id === "liveSig" ? "change" : "input", () => { if (liveReady) { stopLiveRec(); liveReady = false; updateLiveUI(); } }));
 $("liveSetBtn").onclick = () => {
   const bars = checkRange("liveBars"), bpm = checkRange("liveBpm");
   stopLiveRec(); pause();
   const s = songs.live && tab !== "live" ? songs.live : song, old = s.bpm;
   if (s.notes.length && old !== bpm) for (const n of s.notes) { n.t *= old / bpm; n.d *= old / bpm; } // keep what was played on the same beats
+  const sig = parseSig($("liveSig").value); s.beats = sig.beats; s.unit = sig.unit;
   s.bpm = bpm; s.length = bars * s.beats * 60 / bpm;
   s.notes = s.notes.filter(n => n.t < s.length); for (const n of s.notes) n.d = Math.min(n.d, s.length - n.t);
   setSong(s); songs.live = s; liveReady = true; updateLiveUI();
-  say(`設定完成：${bars} 小節、${bpm} BPM。可以開始彈了，按「錄音」會先數一小節預備拍。`);
+  say(`設定完成：${s.beats}/${s.unit} 拍、${bars} 小節、${bpm} BPM。可以開始彈了，按「錄音」會先數一小節預備拍。`);
 };
 const seekEl = $("seek"); let seeking = false;
 seekEl.addEventListener("input", () => { seeking = true; seekTo(seekEl.value / 1000 * (song.duration || 0)); });
@@ -1087,7 +1095,7 @@ function convertImage() {
   else if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
   else say(s.full ? `${contour.drawn ? "畫的圖" : contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。`);
 }
-["imgMode","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
+["imgMode","imgSig","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
 function renderTracks() {
   const box = $("tracks"); box.innerHTML = "";
   song.tracks.forEach((t, i) => {
@@ -1240,7 +1248,7 @@ function drawHeader(t) {
   g.font = `700 16px ${DISPLAY}`; g.textAlign = "left"; g.textBaseline = "top";
   g.fillStyle = C.shadow; g.fillText(title, 13, 12); g.fillStyle = C.cream; g.fillText(title, 12, 11);
   if (title) heart(R(12 + w + 5), 15, C.hot);
-  txt(`${song.bpm} BPM`, 258, 11, C.lav, 8, PIX, "right");
+  txt(`${song.beats}/${song.unit || 4}  ${song.bpm} BPM`, 258, 11, C.lav, 8, PIX, "right");
   txt(`${fmt(t)}/${fmt(song.duration || 0)}`, 258, 21, C.hot, 8, PIX, "right");
 }
 

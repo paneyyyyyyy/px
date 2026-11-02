@@ -63,25 +63,34 @@ input[type=checkbox]{accent-color:var(--pink)}
 .seg{display:inline-grid;grid-template-columns:1fr 1fr 1fr;gap:0;border:1px solid var(--line)}
 .seg button{border:0}
 .seg button[aria-pressed="true"],.seg2 button[aria-pressed="true"]{background:var(--pink);color:#000000}
+.swb{width:30px;height:30px;padding:0;border:2px solid var(--line)}
+.swb[aria-pressed="true"]{border-color:#ffffff;box-shadow:0 0 0 2px #000 inset}
+.dpcol{width:30px;height:30px;padding:0;border:2px solid var(--line);background:#141414;cursor:pointer}
+.seg4{display:inline-grid;grid-template-columns:repeat(4,auto);gap:0;border:1px solid var(--line)}
+.seg4 button{border:0}
+.seg4 button[aria-pressed="true"]{background:var(--pink);color:#000000}
+#dpCanvas{display:block;max-width:100%;max-height:58vh;width:auto;height:auto;margin:12px auto;touch-action:none;border:1px solid var(--line);background:#050505;cursor:crosshair}
 #edCanvas{display:block;max-width:100%;max-height:58vh;width:auto;height:auto;margin:14px auto;touch-action:none;border:1px solid var(--line);background:#050505}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="side">
-    <div class="brand">pixel<span>♥</span>beat<small>把圖片輪廓或即時彈奏變成音樂影片</small></div>
+    <div class="brand">pixel<span>♥</span>beat<small>把圖片、手繪或即時彈奏變成音樂影片</small></div>
     <div class="tabs" role="tablist">
-      <button role="tab" id="t-image" aria-selected="true" data-tab="image">圖片轉 MIDI</button>
+      <button role="tab" id="t-image" aria-selected="true" data-tab="image">圖片／畫圖轉 MIDI</button>
       <button role="tab" id="t-live" aria-selected="false" data-tab="live">即時彈奏</button>
     </div>
 
     <section class="pane" id="p-image" role="tabpanel" aria-labelledby="t-image">
-      <h2>圖片輪廓轉 MIDI</h2>
+      <h2>圖片／畫圖轉 MIDI</h2>
       <div class="row">
         <label class="filebtn primary">上傳圖片<input type="file" id="imgFile" accept="image/*"></label>
+        <button class="primary" id="drawBtn">✎ 自己畫</button>
         <button id="editImgBtn" disabled>重新裁切／選主體</button>
       </div>
       <p class="hint">上傳後會先開編輯畫面：① 裁切 ② 框出主體 ③ 用筆刷補上漏掉、擦掉多抓的地方。「完整主體」會把整個主體用原圖顏色畫成音符。</p>
+      <p class="hint">「自己畫」：從左畫到右就是時間，越上面音越高，畫的顏色就是音符的顏色。</p>
       <label class="f">轉換方式<select id="imgMode"><option value="full" selected>完整主體（用原圖顏色）</option><option value="subject">只要外框</option><option value="edges">圖中所有線條</option></select></label>
       <label class="f">像素格數<select id="imgPix"><option value="32">32 格寬（最簡單）</option><option value="48">48 格寬</option><option value="64" selected>64 格寬</option><option value="80">80 格寬</option><option value="96">96 格寬</option><option value="128">128 格寬（最細）</option></select></label>
       <label class="f">長度<select id="imgBars"><option value="4">4 小節</option><option value="8" selected>8 小節</option><option value="16">16 小節</option></select></label>
@@ -166,6 +175,22 @@ input[type=checkbox]{accent-color:var(--pink)}
     <div class="row" style="justify-content:flex-end;margin-top:12px">
       <button id="edCancel">取消</button>
       <button class="primary" id="edOk">轉成 MIDI</button>
+    </div>
+  </div>
+</div>
+<div class="ed" id="dp" hidden role="dialog" aria-modal="true" aria-labelledby="dpTitle">
+  <div class="edbox">
+    <h2 id="dpTitle">自己畫一張圖</h2>
+    <div class="row" style="justify-content:space-between">
+      <div class="seg4"><button id="dpPen" aria-pressed="true">✎ 畫筆</button><button id="dpCell" aria-pressed="false">▦ 格子筆</button><button id="dpFill" aria-pressed="false">油漆桶</button><button id="dpEraser" aria-pressed="false">橡皮擦</button></div>
+      <label class="row" id="dpSizeRow" style="gap:6px;font-size:14px;flex:1;min-width:140px">粗細<input type="range" id="dpSize" min="2" max="60" value="14" style="flex:1" aria-label="筆刷粗細"></label>
+    </div>
+    <div class="row" id="dpColors" style="margin-top:10px;gap:6px"></div>
+    <canvas id="dpCanvas" width="10" height="10" aria-label="畫布"></canvas>
+    <p class="hint" style="margin-top:0">左 → 右是時間，上 → 下是音高（越上面越高）。細格線是每個音符的格子（跟「像素格數」一樣），粗線是小節線。「格子筆」一次塗滿一格，畫出來的音最準。</p>
+    <div class="row" style="justify-content:space-between;margin-top:12px">
+      <div class="row"><button id="dpUndo">↶ 復原</button><button id="dpClear">清空</button><label class="row" style="gap:6px;font-size:14px"><input type="checkbox" id="dpGrid" checked> 格線</label></div>
+      <div class="row"><button id="dpCancel">取消</button><button class="primary" id="dpOk">轉成 MIDI</button></div>
     </div>
   </div>
 </div>
@@ -420,7 +445,7 @@ function fullSubjectSong(bars, bpm, scale) {
     const x0 = Math.floor(c / cols * aw), x1 = Math.max(x0 + 1, Math.floor((c + 1) / cols * aw)), y0 = Math.floor(r / rows * ah), y1 = Math.max(y0 + 1, Math.floor((r + 1) / rows * ah));
     let n = 0, m = 0, R = 0, G2 = 0, B = 0;
     for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const i = y * aw + x; n++; if (mask[i]) { m++; R += px[i * 4]; G2 += px[i * 4 + 1]; B += px[i * 4 + 2]; } }
-    if (m * 2 >= n) grid[r * cols + c] = [R / m, G2 / m, B / m];
+    if (m && m >= n * (contour.cover || 0.5)) grid[r * cols + c] = [R / m, G2 / m, B / m];
   }
   const ghost = document.createElement("canvas"); ghost.width = aw; ghost.height = ah;
   const gx = ghost.getContext("2d"), gi = gx.createImageData(aw, ah);
@@ -784,9 +809,150 @@ $("edOk").onclick = () => {
   srcImg = makeCrop(1200);
   subjBox = boxNorm(); subjSeeds = seedPack();
   ed.last = { z: ed.z, zc: ed.zc, tx: ed.tx, ty: ed.ty, subj: ed.subj ? { ...ed.subj } : null, seeds: ed.seeds ? ed.seeds.slice() : null };
-  edEl.hidden = true; $("editImgBtn").disabled = false;
+  edEl.hidden = true; srcKind = "photo"; $("editImgBtn").disabled = false; $("editImgBtn").textContent = "重新裁切／選主體";
   convertImage();
 };
+
+/* ---------------- drawing pad → MIDI ---------------- */
+// the pad has the same ratio as the piano roll: x = time, y = pitch, stroke colour = note colour
+let srcKind = "photo";
+const dp = { tool: "pen", color: "#ffffff", undo: [], ptr: null, last: null, openSnap: null };
+const dpEl = $("dp"), dcv = $("dpCanvas"), dg = dcv.getContext("2d");
+dcv.width = FW; dcv.height = FH;
+const dLayer = document.createElement("canvas"); dLayer.width = FW; dLayer.height = FH;
+const dl = dLayer.getContext("2d", { willReadFrequently: true });
+const DP_COLORS = ["#ffffff", "#ff5c8a", "#ff9a3d", "#ffe45c", "#5cff9d", "#4fd8ff", "#6f7bff", "#c46bff", "#8a8a8a"];
+function dpGridSize() { const cols = +$("imgPix").value; return { cols, rows: Math.max(6, Math.round(cols / CROP_A)) }; }
+function dpRender() {
+  dg.fillStyle = "#050505"; dg.fillRect(0, 0, FW, FH);
+  if ($("dpGrid").checked) {
+    const { cols, rows } = dpGridSize(), bars = +$("imgBars").value;
+    dg.fillStyle = "rgba(255,255,255,0.07)";
+    for (let c = 1; c < cols; c++) dg.fillRect(Math.round(c / cols * FW), 0, 1, FH);
+    for (let r = 1; r < rows; r++) dg.fillRect(0, Math.round(r / rows * FH), FW, 1);
+    dg.fillStyle = "rgba(255,255,255,0.25)";
+    for (let b = 1; b < bars; b++) dg.fillRect(Math.round(b / bars * FW) - 1, 0, 2, FH);
+  }
+  dg.drawImage(dLayer, 0, 0);
+}
+function dpSetTool(t) {
+  dp.tool = t;
+  [["pen", "dpPen"], ["cell", "dpCell"], ["fill", "dpFill"], ["eraser", "dpEraser"]].forEach(([k, id]) => $(id).setAttribute("aria-pressed", k === t));
+  $("dpSizeRow").style.visibility = t === "pen" || t === "eraser" ? "visible" : "hidden";
+}
+function dpBuildColors() {
+  const box = $("dpColors"); box.innerHTML = "";
+  for (const c of DP_COLORS) {
+    const b = document.createElement("button"); b.className = "swb"; b.style.background = c; b.setAttribute("aria-label", "顏色 " + c); b.dataset.c = c;
+    b.onclick = () => dpSetColor(c); box.appendChild(b);
+  }
+  const pick = document.createElement("input"); pick.type = "color"; pick.className = "dpcol"; pick.id = "dpPick"; pick.value = "#ffffff"; pick.setAttribute("aria-label", "自訂顏色");
+  pick.oninput = () => dpSetColor(pick.value); box.appendChild(pick);
+  dpSetColor(dp.color);
+}
+function dpSetColor(c) {
+  dp.color = c; if (dp.tool === "eraser") dpSetTool("pen");
+  document.querySelectorAll("#dpColors .swb").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === c));
+}
+const dpPt = e => { const r = dcv.getBoundingClientRect(); return { x: (e.clientX - r.left) / r.width * FW, y: (e.clientY - r.top) / r.height * FH }; };
+function dpSnap() { dp.undo.push(dl.getImageData(0, 0, FW, FH)); if (dp.undo.length > 30) dp.undo.shift(); }
+function dpLine(a, b) {
+  dl.save();
+  dl.globalCompositeOperation = dp.tool === "eraser" ? "destination-out" : "source-over";
+  dl.strokeStyle = dl.fillStyle = dp.tool === "eraser" ? "#000" : dp.color;
+  const w = +$("dpSize").value; dl.lineWidth = w; dl.lineCap = dl.lineJoin = "round";
+  if (a === b) { dl.beginPath(); dl.arc(a.x, a.y, w / 2, 0, Math.PI * 2); dl.fill(); }
+  else { dl.beginPath(); dl.moveTo(a.x, a.y); dl.lineTo(b.x, b.y); dl.stroke(); }
+  dl.restore();
+}
+function dpCellAt(p) {
+  const { cols, rows } = dpGridSize(), c = Math.floor(p.x / FW * cols), r = Math.floor(p.y / FH * rows);
+  if (c < 0 || r < 0 || c >= cols || r >= rows) return;
+  const x0 = Math.round(c / cols * FW), x1 = Math.round((c + 1) / cols * FW), y0 = Math.round(r / rows * FH), y1 = Math.round((r + 1) / rows * FH);
+  dl.fillStyle = dp.color; dl.fillRect(x0, y0, x1 - x0, y1 - y0);
+}
+function dpCells(a, b) {
+  const n = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 4));
+  for (let k = 0; k <= n; k++) dpCellAt({ x: a.x + (b.x - a.x) * k / n, y: a.y + (b.y - a.y) * k / n });
+}
+function dpFloodFill(p) {
+  const x0 = Math.floor(p.x), y0 = Math.floor(p.y); if (x0 < 0 || y0 < 0 || x0 >= FW || y0 >= FH) return;
+  const im = dl.getImageData(0, 0, FW, FH), d8 = im.data, d32 = new Uint32Array(d8.buffer), n = parseInt(dp.color.slice(1), 16);
+  const fillV = new Uint32Array(new Uint8Array([n >> 16, (n >> 8) & 255, n & 255, 255]).buffer)[0];
+  const s = (y0 * FW + x0) * 4, sr = d8[s], sg = d8[s + 1], sb = d8[s + 2], sa = d8[s + 3];
+  if (d32[y0 * FW + x0] === fillV) return;
+  // same colour (or both empty) within a tolerance, so soft stroke edges don't leak gaps
+  const near = i => { const o = i * 4; if (Math.abs(d8[o + 3] - sa) > 90) return false; return sa < 90 || Math.abs(d8[o] - sr) + Math.abs(d8[o + 1] - sg) + Math.abs(d8[o + 2] - sb) <= 120; };
+  const seen = new Uint8Array(FW * FH), st = [y0 * FW + x0]; seen[st[0]] = 1;
+  while (st.length) {
+    const i = st.pop(); if (!near(i)) continue; d32[i] = fillV; const x = i % FW;
+    if (x > 0 && !seen[i - 1]) { seen[i - 1] = 1; st.push(i - 1); }
+    if (x < FW - 1 && !seen[i + 1]) { seen[i + 1] = 1; st.push(i + 1); }
+    if (i >= FW && !seen[i - FW]) { seen[i - FW] = 1; st.push(i - FW); }
+    if (i < FW * FH - FW && !seen[i + FW]) { seen[i + FW] = 1; st.push(i + FW); }
+  }
+  dl.putImageData(im, 0, 0);
+}
+dcv.addEventListener("pointerdown", e => {
+  if (dp.ptr != null) return;
+  e.preventDefault(); dcv.setPointerCapture(e.pointerId); dp.ptr = e.pointerId;
+  const p = dpPt(e); dpSnap(); dp.last = p;
+  if (dp.tool === "fill") { dpFloodFill(p); dp.ptr = null; }
+  else if (dp.tool === "cell") dpCellAt(p);
+  else dpLine(p, p);
+  dpRender();
+});
+dcv.addEventListener("pointermove", e => {
+  if (e.pointerId !== dp.ptr) return;
+  const p = dpPt(e);
+  if (dp.tool === "cell") dpCells(dp.last, p); else dpLine(dp.last, p);
+  dp.last = p; dpRender();
+});
+const dpUp = e => { if (e.pointerId === dp.ptr) { dp.ptr = null; dp.last = null; } };
+dcv.addEventListener("pointerup", dpUp); dcv.addEventListener("pointercancel", dpUp);
+function dpHasInk() { const a = dl.getImageData(0, 0, FW, FH).data; for (let i = 3; i < a.length; i += 4) if (a[i] > 40) return true; return false; }
+function openDraw() {
+  dp.openSnap = dl.getImageData(0, 0, FW, FH); dp.undo = [];
+  dpRender(); dpEl.hidden = false;
+}
+$("dpPen").onclick = () => dpSetTool("pen");
+$("dpCell").onclick = () => dpSetTool("cell");
+$("dpFill").onclick = () => dpSetTool("fill");
+$("dpEraser").onclick = () => dpSetTool("eraser");
+$("dpGrid").onchange = dpRender;
+$("dpUndo").onclick = () => { const s = dp.undo.pop(); if (s) { dl.putImageData(s, 0, 0); dpRender(); } };
+$("dpClear").onclick = () => { dpSnap(); dl.clearRect(0, 0, FW, FH); dpRender(); };
+$("dpCancel").onclick = () => { if (dp.openSnap) dl.putImageData(dp.openSnap, 0, 0); dpEl.hidden = true; };
+$("dpOk").onclick = () => {
+  if (!dpHasInk()) { say("畫布是空的，先畫點東西再轉。"); dpEl.hidden = true; if (dp.openSnap) dl.putImageData(dp.openSnap, 0, 0); return; }
+  const c = document.createElement("canvas"); c.width = 1200; c.height = Math.round(1200 / CROP_A);
+  const x = c.getContext("2d"); x.fillStyle = "#000000"; x.fillRect(0, 0, c.width, c.height); x.imageSmoothingQuality = "high"; x.drawImage(dLayer, 0, 0, c.width, c.height);
+  srcImg = c; srcKind = "draw"; subjBox = null; subjSeeds = null;
+  dpEl.hidden = true; $("editImgBtn").disabled = false; $("editImgBtn").textContent = "繼續畫";
+  convertImage();
+};
+dpEl.addEventListener("keydown", e => {
+  if (e.key === "Escape") { $("dpCancel").click(); e.stopPropagation(); }
+  else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); $("dpUndo").click(); }
+  e.stopPropagation(); // don't play notes from the computer keyboard while drawing
+});
+$("drawBtn").onclick = openDraw;
+dpBuildColors(); dpSetTool("pen");
+// drawing → note grid. "full": every painted cell becomes a note in its own colour; "subject": only the shape's edge; "edges": every stroke
+function drawnContour(mode) {
+  const aw = mode === "full" ? 480 : IMG_IN.w, ah = Math.round(aw / CROP_A), N = aw * ah;
+  const oc = document.createElement("canvas"); oc.width = aw; oc.height = ah;
+  const ox = oc.getContext("2d", { willReadFrequently: true }); ox.imageSmoothingQuality = "high"; ox.drawImage(dLayer, 0, 0, aw, ah);
+  const px = ox.getImageData(0, 0, aw, ah).data, mask = new Uint8Array(N), edge = new Uint8Array(N);
+  for (let i = 0; i < N; i++) mask[i] = px[i * 4 + 3] > 40 ? 1 : 0;
+  for (let y = 0; y < ah; y++) for (let x = 0; x < aw; x++) {
+    const i = y * aw + x; if (!mask[i]) continue;
+    if (mode === "edges" || x === 0 || y === 0 || x === aw - 1 || y === ah - 1 || !mask[i - 1] || !mask[i + 1] || !mask[i - aw] || !mask[i + aw]) edge[i] = 1;
+  }
+  const mk = col => { const c = document.createElement("canvas"); c.width = aw; c.height = ah; const x = c.getContext("2d"); x.fillStyle = col; for (let i = 0; i < N; i++) if (edge[i]) x.fillRect(i % aw, (i / aw) | 0, 1, 1); return c; };
+  let count = 0; for (let i = 0; i < N; i++) if (mode === "full" ? mask[i] : edge[i]) count++;
+  return { edge, aw, ah, px, mask, canvas: mk(C.pink), white: mk(C.cream), dark: mk(C.ink), count, drawn: true, cover: 0.15 };
+}
 edEl.addEventListener("keydown", e => { if (e.key === "Escape") edEl.hidden = true; });
 
 /* ---------------- cover image + colour theme ---------------- */
@@ -904,20 +1070,22 @@ seekEl.addEventListener("change", () => { seeking = false; });
 $("imgFile").onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const img = new Image();
-  img.onload = () => { origImg = img; ed.img = null; ed.last = null; openEditor(false); };
+  img.onload = () => { origImg = img; ed.img = null; ed.last = null; srcKind = "photo"; openEditor(false); };
   img.onerror = () => say("這張圖片讀不出來，換一張試試。");
   img.src = URL.createObjectURL(f); e.target.value = "";
 };
-$("editImgBtn").onclick = () => { if (origImg) openEditor(true); };
+$("editImgBtn").onclick = () => { if (srcKind === "draw") openDraw(); else if (origImg) openEditor(true); };
 function convertImage() {
   if (!srcImg) return; pause();
   const mode = $("imgMode").value;
-  contour = mode === "full" && !subjBox && !subjSeeds ? wholeImage(srcImg) // no subject chosen: the whole picture becomes pixels
+  contour = srcKind === "draw" ? drawnContour(mode)
+    : mode === "full" && !subjBox && !subjSeeds ? wholeImage(srcImg) // no subject chosen: the whole picture becomes pixels
     : findContour(srcImg, mode === "full" ? "subject" : mode, 0.5, false, subjBox, subjSeeds);
   themes.image = themeFromImage(srcImg); if (tab === "image") applyTheme(themes.image);
   const s = contourToSong(); setSong(s); songs.image = s;
-  if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
-  else say(s.full ? `${contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。`);
+  if (!contour.count && contour.drawn) say("畫布上沒有東西，按「繼續畫」再畫一些。");
+  else if (!contour.count) say("沒抓到輪廓。試著重新框主體、用筆刷補上主體，或換成「圖中所有線條」。");
+  else say(s.full ? `${contour.drawn ? "畫的圖" : contour.whole ? "整張圖" : "主體"}轉成 ${s.cols}×${s.rowPitches.length} 的像素圖，共 ${s.notes.length} 個音。${s.scaleNote || ""}` : `輪廓轉成 ${s.notes.length} 個音。`);
 }
 ["imgMode","imgBars","imgOct","imgScale","imgBpm","imgPix"].forEach(id => $(id).addEventListener("change", () => { if (srcImg) convertImage(); }));
 function renderTracks() {
@@ -1117,13 +1285,13 @@ function roll(P, t, whole) {
 
 /* ----- tab 1: picture above, midi below ----- */
 function drawImageTab(t, active, act) {
-  win(12, 36, 246, 164, "source.png");
+  win(12, 36, 246, 164, srcKind === "draw" && srcImg ? "drawing.png" : "source.png");
   const I = IMG_IN;
   if (!srcImg || !contour) {
     fr(I.x, I.y, I.w, I.h, C.navy2);
     for (let y = I.y; y < I.y + I.h; y += 4) for (let x = I.x + (y / 4 % 2) * 2; x < I.x + I.w; x += 4) fr(x, y, 1, 1, C.grid);
     heart(I.x + I.w / 2 - 7, I.y + 48, C.pink, 2);
-    txt("upload an image", I.x + I.w / 2, I.y + 72, C.blush, 8, PIX, "center");
+    txt("upload or draw", I.x + I.w / 2, I.y + 72, C.blush, 8, PIX, "center");
   } else {
     g.drawImage(small(), I.x, I.y);
     const prog = song.duration ? Math.min(1, t / song.duration) : 0, sx = R(I.x + prog * I.w);
@@ -1135,7 +1303,7 @@ function drawImageTab(t, active, act) {
     const lo = song.range[0], hi = song.range[1], rp = song.rowPitches;
     if (!song.full) for (const n of active) heart(sx - 3, R(I.y + (1 - (rp ? rp.indexOf(n.p) + 0.5 : n.p - lo + 0.5) / (rp ? rp.length : hi - lo + 1)) * I.h) - 3, trackColor(n.tr) === C.pink ? C.hot : trackColor(n.tr));
   }
-  win(12, 208, 246, 164, song.full ? (contour && contour.whole ? "image.mid" : "subject.mid") : "outline.mid");
+  win(12, 208, 246, 164, song.full ? (contour && contour.drawn ? "drawing.mid" : contour && contour.whole ? "image.mid" : "subject.mid") : "outline.mid");
   roll(ROLL_IN, t, true);
   // bottom: bar ring + now box
   const bar = Math.floor(t / D.spb);

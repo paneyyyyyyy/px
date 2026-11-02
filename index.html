@@ -589,7 +589,7 @@ function updateLiveUI() {
   kb.classList.toggle("locked", !liveReady);
 }
 function startLiveRec() {
-  if (!liveReady) { say("先設定長度和速度，按「設定完成」後才能錄音。"); return; }
+  if (!liveReady) { say("先設定拍號、長度和速度，按「設定完成」後才能錄音。"); return; }
   if (recording) stopRecording();
   ensureAudio(); pause();
   song.notes = []; prepare(); renderTracks();
@@ -615,7 +615,7 @@ function liveTrack() {
   return i;
 }
 function noteOn(p, v) {
-  if (tab === "live" && !liveReady) { say("先設定長度和速度，按「設定完成」後才能開始彈。"); return; }
+  if (tab === "live" && !liveReady) { say("先設定拍號、長度和速度，按「設定完成」後才能開始彈。"); return; }
   ensureAudio();
   if (held.has(p)) noteOff(p);
   let tr = 0, n = null;
@@ -1035,7 +1035,7 @@ $("coverFile").onchange = e => {
 };
 $("coverClear").onclick = () => { setCover(null); say("已移除封面，這一頁的配色回到黑白。"); };
 document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => switchTab(b.dataset.tab));
-$("playBtn").onclick = () => { if (liveTake) { stopLiveRec(); return; } playing ? pause() : play(); };
+$("playBtn").onclick = () => { if (liveTake) { stopLiveRec(); return; } if (!playing && !song.notes.length) { say(tab === "live" ? "還沒有錄到音符，先按「錄音」彈一段。" : "還沒有音符，先上傳圖片或自己畫一張。"); return; } playing ? pause() : play(); };
 $("restartBtn").onclick = () => { stopLiveRec(); seekTo(0); if (!playing) play(); };
 $("clearBtn").onclick = () => { stopLiveRec(); pause(); song.notes = []; setSong(song); songs.live = song; say("已清空。按「錄音」重新錄。"); };
 $("liveRecBtn").onclick = () => liveTake ? stopLiveRec() : startLiveRec();
@@ -1047,13 +1047,19 @@ const RANGES = {
   liveBars: { min: 1, max: 64, def: 8, name: "長度", unit: " 小節" },
 };
 for (const id in RANGES) { const e = document.createElement("div"); e.className = "err"; e.id = id + "Err"; e.setAttribute("role", "alert"); $(id).closest("label").after(e); }
+// the field's error line pushes the buttons below it down; if that happens mid-click the click misses,
+// so while a pointer is pressed, wait until it is released (and the click has gone through) before showing it
+let ptrIsDown = false; const pendingErr = new Map();
+document.addEventListener("pointerdown", () => { ptrIsDown = true; }, true);
+document.addEventListener("pointerup", () => { ptrIsDown = false; setTimeout(() => { for (const [el, m] of pendingErr) el.textContent = m; pendingErr.clear(); }, 0); }, true);
+function showErr(el, msg) { if (ptrIsDown) pendingErr.set(el, msg); else el.textContent = msg; }
 function checkRange(id, quiet) { // out of range → snap to the nearest limit and say so under the field
   const r = RANGES[id], el = $(id), err = $(id + "Err"), raw = el.value.trim(), v = Math.round(+raw);
   let out = v, msg = "";
   if (raw === "" || !isFinite(+raw)) { out = r.def; msg = `${r.name}要填數字，已改回 ${r.def}${r.unit}。`; }
   else if (v < r.min) { out = r.min; msg = `${r.name}最低是 ${r.min}${r.unit}，已自動改成 ${r.min}。`; }
   else if (v > r.max) { out = r.max; msg = `${r.name}最高是 ${r.max}${r.unit}，已自動改成 ${r.max}。`; }
-  el.value = out; if (msg || !quiet) err.textContent = msg;
+  el.value = out; if (msg || !quiet) showErr(err, msg);
   return out;
 }
 for (const id in RANGES) $(id).addEventListener("change", () => checkRange(id));
@@ -1078,7 +1084,7 @@ seekEl.addEventListener("change", () => { seeking = false; });
 $("imgFile").onchange = e => {
   const f = e.target.files[0]; if (!f) return;
   const img = new Image();
-  img.onload = () => { origImg = img; ed.img = null; ed.last = null; srcKind = "photo"; openEditor(false); };
+  img.onload = () => { origImg = img; ed.img = null; ed.last = null; openEditor(false); }; // srcKind only switches once the photo is confirmed
   img.onerror = () => say("這張圖片讀不出來，換一張試試。");
   img.src = URL.createObjectURL(f); e.target.value = "";
 };

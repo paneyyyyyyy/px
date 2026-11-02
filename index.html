@@ -148,7 +148,7 @@ input[type=checkbox]{accent-color:var(--pink)}
 
     <section>
       <h2>輸出影片</h2>
-      <label class="f">畫面標題<input type="text" id="titleIn" value="untitled" maxlength="22"></label>
+      <label class="f">畫面標題<input type="text" id="titleIn" value="" placeholder="不填就留白" maxlength="22"></label>
       <div class="row" style="margin-top:12px"><button class="primary" id="recBtn">錄製整首成影片</button></div>
       <p class="hint">從頭播到尾邊播邊錄，存成 1080×1920 含聲音的影片。</p>
       <div class="status" id="status" role="status"></div>
@@ -1235,11 +1235,11 @@ function draw() {
 }
 
 function drawHeader(t) {
-  const title = ($("titleIn").value || "untitled").toLowerCase();
+  const title = $("titleIn").value.trim().toLowerCase();
   g.font = `700 16px ${DISPLAY}`; const w = g.measureText(title).width;
   g.font = `700 16px ${DISPLAY}`; g.textAlign = "left"; g.textBaseline = "top";
   g.fillStyle = C.shadow; g.fillText(title, 13, 12); g.fillStyle = C.cream; g.fillText(title, 12, 11);
-  heart(R(12 + w + 5), 15, C.hot);
+  if (title) heart(R(12 + w + 5), 15, C.hot);
   txt(`${song.bpm} BPM`, 258, 11, C.lav, 8, PIX, "right");
   txt(`${fmt(t)}/${fmt(song.duration || 0)}`, 258, 21, C.hot, 8, PIX, "right");
 }
